@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NZES 2023 Explorer</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f6f5f1; --surface:#fcfcfb; --surface-2:#f0efea; --ink:#141413; --ink-2:#52514e; --muted:#7d7b75;
+  --grid:#e4e3dc; --axis:#c3c2b7; --border:rgba(11,11,11,.10); --accent:#1c5cab; --accent-wash:#e3edf9;
+  --warn:#9a5b00; --warn-wash:#fdf3df;
+  --div-n2:#1c5cab; --div-n1:#6da7ec; --div-0:#dcdad3; --div-p1:#ef8f8a; --div-p2:#c63837;
+  --seq-0:#eef4fc; --seq-1:#1c5cab;
+  --p-lab:#d82c20; --p-nat:#1b5fae; --p-grn:#2e8540; --p-act:#e3ad00; --p-nzf:#3c3c3a; --p-tpm:#8c2d5a;
+  --p-top:#17a398; --p-grn-2:#86c08f; --p-oth:#a28a62; --p-non:#b5b3ab; --p-dk:#d6d4cc;
+  --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100; --cat-5:#e87ba4; --cat-6:#008300; --cat-7:#6250d6; --cat-8:#e34948;
+  --font: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0f0f0e; --surface:#1a1a19; --surface-2:#232321; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#8f8d86;
+    --grid:#2c2c2a; --axis:#45443f; --border:rgba(255,255,255,.10); --accent:#6da7ec; --accent-wash:#1b2a3d;
+    --warn:#f0b54a; --warn-wash:#33280f;
+    --div-n2:#3987e5; --div-n1:#255b9c; --div-0:#3a3a37; --div-p1:#9c3a39; --div-p2:#e66767;
+    --seq-0:#1d2632; --seq-1:#6da7ec;
+    --p-lab:#e5534a; --p-nat:#4a8ae0; --p-grn:#3fa457; --p-act:#e8bb22; --p-nzf:#a3a29c; --p-tpm:#c0558a;
+    --p-top:#2cc0b3; --p-grn-2:#1f6b30; --p-oth:#b39c76; --p-non:#6b6a65; --p-dk:#4a4945;
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181; --cat-6:#008300; --cat-7:#9085e9; --cat-8:#e66767;
+  }
+}
+:root[data-theme="dark"]{
+    color-scheme: dark;
+    --page:#0f0f0e; --surface:#1a1a19; --surface-2:#232321; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#8f8d86;
+    --grid:#2c2c2a; --axis:#45443f; --border:rgba(255,255,255,.10); --accent:#6da7ec; --accent-wash:#1b2a3d;
+    --warn:#f0b54a; --warn-wash:#33280f;
+    --div-n2:#3987e5; --div-n1:#255b9c; --div-0:#3a3a37; --div-p1:#9c3a39; --div-p2:#e66767;
+    --seq-0:#1d2632; --seq-1:#6da7ec;
+    --p-lab:#e5534a; --p-nat:#4a8ae0; --p-grn:#3fa457; --p-act:#e8bb22; --p-nzf:#a3a29c; --p-tpm:#c0558a;
+    --p-top:#2cc0b3; --p-grn-2:#1f6b30; --p-oth:#b39c76; --p-non:#6b6a65; --p-dk:#4a4945;
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181; --cat-6:#008300; --cat-7:#9085e9; --cat-8:#e66767;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 var(--font)}
+button,select,input{font:inherit;color:inherit}
+a{color:var(--accent)}
+header.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border)}
+.bar{display:flex;align-items:center;gap:16px;padding:10px 20px;flex-wrap:wrap}
+.brand{font-weight:650;font-size:15px;letter-spacing:-.01em;margin-right:8px;white-space:nowrap}
+.brand small{font-weight:450;color:var(--muted);margin-left:6px}
+nav.tabs{display:flex;gap:2px;flex-wrap:wrap}
+nav.tabs button{background:none;border:0;padding:6px 11px;border-radius:7px;cursor:pointer;color:var(--ink-2)}
+nav.tabs button:hover{background:var(--surface-2)}
+nav.tabs button[aria-selected=true]{background:var(--accent-wash);color:var(--accent);font-weight:600}
+.globals{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.globals label{display:flex;gap:6px;align-items:center}
+select,input[type=search]{background:var(--surface);border:1px solid var(--axis);border-radius:7px;padding:5px 8px;max-width:100%}
+#gFilterVar,#gFilterVal{max-width:210px}
+.iconbtn{background:var(--surface);border:1px solid var(--axis);border-radius:7px;padding:5px 9px;cursor:pointer}
+.iconbtn:hover{background:var(--surface-2)}
+main{max-width:1320px;margin:0 auto;padding:20px}
+section.view{display:none}
+section.view.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:18px}
+.card h2{font-size:16px;margin:0 0 4px;font-weight:650;letter-spacing:-.01em}
+.card h3{font-size:14px;margin:14px 0 6px;font-weight:600}
+.sub{color:var(--ink-2);margin:0 0 12px;font-size:13px;max-width:80ch}
+.note{color:var(--muted);font-size:12px;margin-top:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:18px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .v{font-size:26px;font-weight:650;letter-spacing:-.02em}
+.tile .l{color:var(--ink-2);font-size:12.5px}
+.layout{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start}
+.layout>*{min-width:0}
+@media (max-width:900px){.layout{grid-template-columns:1fr}.side{max-height:45vh!important;position:static!important}}
+.side{position:sticky;top:70px;max-height:calc(100vh - 90px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.side .search{padding:12px;border-bottom:1px solid var(--border)}
+.side .search input{width:100%}
+.side .list{overflow:auto;padding:4px 0 12px}
+.side details{border-bottom:1px solid var(--grid)}
+.side summary{cursor:pointer;padding:8px 12px;font-weight:600;font-size:12.5px;color:var(--ink-2);list-style:none;display:flex;justify-content:space-between}
+.side summary::-webkit-details-marker{display:none}
+.side summary .c{font-weight:400;color:var(--muted)}
+.vitem{display:flex;gap:8px;padding:5px 12px 5px 14px;cursor:pointer;font-size:12.5px;line-height:1.3;border-left:3px solid transparent}
+.vitem:hover{background:var(--surface-2)}
+.vitem.sel{background:var(--accent-wash);border-left-color:var(--accent)}
+.vitem code{flex:0 0 auto;min-width:46px;color:var(--muted);font-size:11.5px;padding-top:1px}
+.qhead .code{display:inline-block;font:600 12px/1 ui-monospace,Menlo,monospace;background:var(--surface-2);padding:4px 6px;border-radius:5px;color:var(--ink-2);margin-right:6px}
+.qhead h2{display:inline;font-size:18px}
+.qhead .stem{color:var(--ink-2);margin:8px 0 0;font-size:13px}
+.controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:14px 0 6px;font-size:13px}
+.controls label{display:flex;gap:6px;align-items:center;color:var(--ink-2)}
+.controls label{max-width:100%;min-width:0}
+#xBy{max-width:min(340px,100%)!important;min-width:0;flex:1 1 auto}
+.seg{display:inline-flex;border:1px solid var(--axis);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 10px;cursor:pointer;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--axis)}
+.seg button[aria-pressed=true]{background:var(--accent-wash);color:var(--accent);font-weight:600}
+.seg button:disabled{opacity:.4;cursor:default}
+.chart{width:100%;overflow-x:auto}
+svg{display:block;max-width:100%}
+svg text{fill:var(--ink-2);font:12px var(--font)}
+svg .ink{fill:var(--ink)}
+svg .muted{fill:var(--muted)}
+svg .grid{stroke:var(--grid)}
+svg .axis{stroke:var(--axis)}
+svg .hit:hover+.hl, svg g.mark:hover > .m{opacity:.8}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2);margin:8px 0 4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.basebar{font-size:12px;color:var(--ink-2);background:var(--surface-2);border-radius:8px;padding:7px 10px;margin-top:10px}
+.basebar b{color:var(--ink);font-weight:600}
+.warnbox{font-size:12.5px;background:var(--warn-wash);color:var(--warn);border-radius:8px;padding:8px 10px;margin:8px 0}
+table.data{border-collapse:collapse;font-size:12.5px;width:100%;font-variant-numeric:tabular-nums}
+table.data th,table.data td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+table.data th:first-child,table.data td:first-child{text-align:left;white-space:normal}
+table.data thead th{color:var(--ink-2);font-weight:600;position:sticky;top:0;background:var(--surface);vertical-align:bottom;white-space:normal}
+table.data td.low{color:var(--muted);font-style:italic}
+table.data td.sup{color:var(--muted)}
+table.data tr.total td{font-weight:600}
+.tablewrap{max-height:520px;overflow:auto;margin-top:10px;border:1px solid var(--grid);border-radius:8px}
+.tbtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;line-height:1.4;padding:7px 9px;border-radius:7px;max-width:300px;opacity:0;transition:opacity .08s;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#tip b{font-weight:650}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);margin-left:6px;vertical-align:middle}
+.methods p,.methods li{max-width:85ch}
+.methods h3{margin-top:18px}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+.flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+@media (max-width:640px){main{padding:12px}.bar{padding:8px 12px}.card{padding:14px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="brand">NZES 2023 Explorer<small>New Zealand Election Study</small></div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <div class="globals">
+      <label title="Survey weight applied to every estimate">Weight
+        <select id="gWeight">
+          <option value="vwgt">Vote-validated (vwgt)</option>
+          <option value="bwgt">Demographic only (bwgt)</option>
+          <option value="mwgt">Māori subsample (mwgt)</option>
+          <option value="none">Unweighted</option>
+        </select></label>
+      <label title="Restrict every view to one subgroup">Filter
+        <select id="gFilterVar"><option value="">Everyone</option></select>
+        <select id="gFilterVal" hidden></select></label>
+      <label title="Include 'Don't know' and other non-substantive answers"><input type="checkbox" id="gDK"> Show “Don’t know”</label>
+      <button class="iconbtn" id="themeBtn" title="Toggle light/dark" aria-label="Toggle light/dark"><svg width="16" height="16" viewBox="0 0 16 16" style="display:block"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+</header>
+<main>
+  <section class="view" id="v-overview"></section>
+  <section class="view" id="v-explore">
+    <div class="layout">
+      <aside class="side">
+        <div class="search"><input type="search" id="q" placeholder="Search questions, e.g. trust, co-governance, B6…" aria-label="Search questions"></div>
+        <div class="list" id="vlist"></div>
+      </aside>
+      <div id="xmain"></div>
+    </div>
+  </section>
+  <section class="view" id="v-parties"></section>
+  <section class="view" id="v-flows"></section>
+  <section class="view" id="v-groups"></section>
+  <section class="view" id="v-issues"></section>
+  <section class="view" id="v-methods"></section>
+</main>
+<div id="tip" role="tooltip"></div>
+<script>
+const NZES = /*__DATA__*/null;
+</script>
+<script>
+"use strict";
+/* ============================================================ data */
+const N = NZES.meta.n;
+const V = {}; NZES.vars.forEach(v => { V[v.n] = v; v.miss = new Set(v.miss); });
+const COL = {};
+for (const [k, arr] of Object.entries(NZES.cols)) {
+  const a = new Float64Array(N); for (let i = 0; i < N; i++) a[i] = arr[i] == null ? NaN : arr[i]; COL[k] = a;
+}
+const WTS = {}; for (const [k, arr] of Object.entries(NZES.w)) WTS[k] = Float64Array.from(arr);
+WTS.none = new Float64Array(N).fill(1);
+
+const S = { weight: "vwgt", dk: false, fVar: "", fVal: null, tab: "overview", xVar: "mvpartyvote", xBy: "", xView: "dist" };
+
+/* ============================================================ helpers */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtP = (p, d = 0) => (p == null || isNaN(p)) ? "—" : (100 * p).toFixed(d) + "%";
+const fmtN = n => Math.round(n).toLocaleString("en-NZ");
+const fmt1 = x => (x == null || isNaN(x)) ? "—" : x.toFixed(1);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const _codes = {};
+function codesOf(v) {
+  if (_codes[v]) return _codes[v];
+  let cs = Object.keys(V[v].lab).map(Number).sort((a, b) => a - b);
+  if (cs.includes(0) && isPartyVar(v) && /not vote|^none|^no party|^no$/i.test(V[v].lab[0])) { const miss = cs.filter(c => V[v].miss.has(c)); cs = [...cs.filter(c => c !== 0 && !V[v].miss.has(c)), 0, ...miss]; }
+  return (_codes[v] = cs);
+}
+const lab = (v, c) => V[v].lab[c] ?? String(c);
+const substantive = (v, c) => !V[v].miss.has(c);
+const titleOf = v => { const m = V[v]; if (m.k === "multi" && m.tr && m.lab[1] && m.lab[1].length > 12) return m.lab[1]; return m.it && (m.tr || m.it.length >= 40) ? m.it : m.t; };
+const MIN_N = 30, SUP_N = 10;
+
+function weightVec() { return WTS[S.weight]; }
+function filterMask() {
+  const m = new Uint8Array(N).fill(1);
+  const w = weightVec();
+  for (let i = 0; i < N; i++) if (!(w[i] > 0)) m[i] = 0;          // mwgt zeroes non-Māori
+  if (S.fVar && S.fVal != null) { const c = COL[S.fVar]; for (let i = 0; i < N; i++) if (c[i] !== S.fVal) m[i] = 0; }
+  return m;
+}
+
+/* ---------- stats ---------- */
+function wilson(p, n) {
+  if (!(n > 0)) return [NaN, NaN]; const z = 1.96, z2 = z * z;
+  const d = 1 + z2 / n, c = (p + z2 / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+/** Weighted distribution of `v` among rows where mask[i] && extra(i). */
+function dist(v, mask, opt = {}) {
+  const col = COL[v], w = weightVec(), meta = V[v];
+  const incl = opt.dk ?? S.dk;
+  const codes = codesOf(v).filter(c => incl || substantive(v, c));
+  const idx = new Map(codes.map((c, i) => [c, i]));
+  const sw = new Float64Array(codes.length), n = new Float64Array(codes.length);
+  let SW = 0, SW2 = 0, NN = 0;
+  for (let i = 0; i < N; i++) {
+    if (!mask[i]) continue; const x = col[i]; if (isNaN(x)) continue;
+    const k = idx.get(x); if (k === undefined) continue;
+    sw[k] += w[i]; n[k]++; SW += w[i]; SW2 += w[i] * w[i]; NN++;
+  }
+  const neff = SW2 > 0 ? SW * SW / SW2 : 0;
+  const cats = codes.map((c, k) => {
+    const p = SW > 0 ? sw[k] / SW : NaN; const [lo, hi] = wilson(p, neff);
+    return { code: c, label: lab(v, c), sw: sw[k], n: n[k], p, lo, hi, miss: meta.miss.has(c) };
+  });
+  return { v, cats, n: NN, sw: SW, neff };
+}
+function meanOf(v, mask) {
+  const col = COL[v], w = weightVec(); let SW = 0, SWX = 0, SW2 = 0, NN = 0;
+  for (let i = 0; i < N; i++) { if (!mask[i]) continue; const x = col[i]; if (isNaN(x) || V[v].miss.has(x)) continue; SW += w[i]; SWX += w[i] * x; SW2 += w[i] * w[i]; NN++; }
+  if (!SW) return { m: NaN, lo: NaN, hi: NaN, n: 0, neff: 0 };
+  const m = SWX / SW; let A = 0;
+  for (let i = 0; i < N; i++) { if (!mask[i]) continue; const x = col[i]; if (isNaN(x) || V[v].miss.has(x)) continue; A += w[i] * w[i] * (x - m) * (x - m); }
+  const se = Math.sqrt(A) / SW * (NN > 1 ? Math.sqrt(NN / (NN - 1)) : 1);
+  return { m, se, lo: m - 1.96 * se, hi: m + 1.96 * se, n: NN, neff: SW * SW / SW2 };
+}
+function andMask(mask, v, code) { const c = COL[v], m = new Uint8Array(N); for (let i = 0; i < N; i++) m[i] = mask[i] && c[i] === code ? 1 : 0; return m; }
+/* chi-square with Kish design-effect correction (first-order Rao–Scott style) */
+function lgamma(x) { const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, .1208650973866179e-2, -.5395239384953e-5]; let y = x, t = x + 5.5; t -= (x + .5) * Math.log(t); let s = 1.000000000190015; for (const k of c) s += k / ++y; return -t + Math.log(2.5066282746310005 * s / x); }
+function gammaQ(a, x) { // upper regularized gamma
+  if (x <= 0) return 1;
+  if (x < a + 1) { let s = 1 / a, d = s, ap = a; for (let n = 0; n < 500; n++) { ap++; d *= x / ap; s += d; if (Math.abs(d) < Math.abs(s) * 1e-12) break; } return 1 - s * Math.exp(-x + a * Math.log(x) - lgamma(a)); }
+  let b = x + 1 - a, c = 1e300, d = 1 / b, h = d; for (let i = 1; i < 500; i++) { const an = -i * (i - a); b += 2; d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300; c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300; d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-12) break; }
+  return Math.exp(-x + a * Math.log(x) - lgamma(a)) * h;
+}
+function chiTest(table, neffTotal) { // table[r][c] = weighted sums
+  const R = table.length, C = table[0].length; let T = 0; const rs = Array(R).fill(0), cs = Array(C).fill(0);
+  table.forEach((row, i) => row.forEach((x, j) => { rs[i] += x; cs[j] += x; T += x; }));
+  const rr = rs.map((x, i) => [x, i]).filter(a => a[0] > 0).map(a => a[1]), cc = cs.map((x, j) => [x, j]).filter(a => a[0] > 0).map(a => a[1]);
+  if (rr.length < 2 || cc.length < 2) return null;
+  let X = 0; for (const i of rr) for (const j of cc) { const e = rs[i] * cs[j] / T; X += (table[i][j] - e) ** 2 / e; }
+  X = X / T * neffTotal; const df = (rr.length - 1) * (cc.length - 1);
+  const V = Math.sqrt(X / neffTotal / Math.min(rr.length - 1, cc.length - 1));
+  return { X, df, p: gammaQ(df / 2, X / 2), V };
+}
+
+/* ---------- colours ---------- */
+const PARTY_RULES = [
+  [/^labou?r/i, "--p-lab"], [/^national/i, "--p-nat"], [/^green/i, "--p-grn"], [/^act$/i, "--p-act"],
+  [/^nz first/i, "--p-nzf"], [/te p[aā]ti|^m[aā]ori$/i, "--p-tpm"], [/opportunit|^top$/i, "--p-top"],
+  [/^another|^other/i, "--p-oth"], [/not vote|^nonvote|^none|^no party|^no$|^neither/i, "--p-non"],
+  [/don.?t know|missing|unlabelled/i, "--p-dk"],
+  [/^yes, labour/i, "--p-lab"], [/^yes, national/i, "--p-nat"], [/^yes, another/i, "--p-oth"],
+  [/left bloc/i, "--p-lab"], [/right bloc/i, "--p-nat"],
+  [/christopher luxon/i, "--p-nat"], [/chris hipkins/i, "--p-lab"], [/james shaw/i, "--p-grn"], [/marama davidson/i, "--p-grn-2"], [/david seymour/i, "--p-act"],
+];
+function isPartyVar(v) { const L = Object.values(V[v].lab); return L.filter(t => /^(labou?r|national|green|act|nz first)$/i.test(t) || /luxon|hipkins/i.test(t) || /bloc/.test(t)).length >= 2; }
+function partyColor(label) { for (const [re, c] of PARTY_RULES) if (re.test(label)) return css(c); return null; }
+const ORD_RE = /agree|trust|satisf|interest|well|likely|more|less|good|bad|often|close|definitely|positively|negatively|easy|difficult|fair|high|low|much|lot|very|always|usually|never|important|too far|too high|too low/i;
+function isOrdinal(v) { const meta = V[v]; if (meta.k === "scale") return true; if (meta.k !== "cat") return false; const L = codesOf(v).filter(c => substantive(v, c)).map(c => lab(v, c)); return L.length >= 3 && L.length <= 7 && L.filter(t => ORD_RE.test(t)).length >= 2; }
+function divergingColors(k) {
+  const n2 = css("--div-n2"), n1 = css("--div-n1"), z = css("--div-0"), p1 = css("--div-p1"), p2 = css("--div-p2");
+  return { 2: [n2, p2], 3: [n2, z, p2], 4: [n2, n1, p1, p2], 5: [n2, n1, z, p1, p2], 6: [n2, n1, mix(n1, z, .5), mix(p1, z, .5), p1, p2], 7: [n2, mix(n2, n1, .5), n1, z, p1, mix(p1, p2, .5), p2] }[k] || null;
+}
+function sequential(k) { const a = css("--seq-0"), b = css("--seq-1"); return Array.from({ length: k }, (_, i) => mix(a, b, k === 1 ? 1 : .25 + .75 * i / (k - 1))); }
+function hex2rgb(h) { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map(x => x + x).join(""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function mix(a, b, t) { const A = hex2rgb(a), B = hex2rgb(b); return "#" + A.map((x, i) => Math.round(x + (B[i] - x) * t).toString(16).padStart(2, "0")).join(""); }
+function colorsFor(v, cats) {
+  const party = isPartyVar(v);
+  const subs = cats.filter(c => !c.miss);
+  let base;
+  if (party) base = subs.map((c, i) => partyColor(c.label) || css(`--cat-${(i % 8) + 1}`));
+  else if (isOrdinal(v)) {
+    if (V[v].k === "scale") { const k = subs.length; base = subs.map((c, i) => mix(css("--div-n2"), css("--div-p2"), i / (k - 1))).map((c, i) => i === 5 ? css("--div-0") : c); }
+    else base = divergingColors(subs.length) || sequential(subs.length);
+  } else if (subs.length <= 8) base = subs.map((c, i) => css(`--cat-${i + 1}`));
+  else base = sequential(subs.length);
+  const m = new Map(); subs.forEach((c, i) => m.set(c.code, base[i]));
+  cats.filter(c => c.miss).forEach(c => m.set(c.code, css("--p-dk")));
+  return m;
+}
+function textOn(bg) { const [r, g, b] = hex2rgb(bg); return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#141413" : "#ffffff"; }
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+document.addEventListener("mousemove", e => { if (tip.style.opacity === "1") { const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); const y = e.clientY + 16 + tip.offsetHeight > innerHeight ? e.clientY - tip.offsetHeight - 10 : e.clientY + 16; tip.style.left = x + "px"; tip.style.top = y + "px"; } });
+document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"); if (t) { tip.innerHTML = t.getAttribute("data-tip"); tip.style.opacity = "1"; } else tip.style.opacity = "0"; });
+
+/* ============================================================ chart primitives (SVG strings) */
+function svgOpen(w, h) { return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">`; }
+function wrapText(s, max) { const words = String(s).split(/\s+/); const lines = []; let cur = ""; for (const w of words) { if ((cur + " " + w).trim().length > max && cur) { lines.push(cur); cur = w; } else cur = (cur + " " + w).trim(); } if (cur) lines.push(cur); return lines; }
+function chartWidth(el) { return Math.max(300, Math.min(1100, (el && el.clientWidth) || 900)); }
+/* Measure the inner width a chart will get inside a .card of `el` (or el itself). */
+function cardW(el, half) { const w = el.clientWidth || 1200; const inner = x => Math.max(280, x - 42); return half && w >= 1058 ? inner((w - 18) / 2) : inner(w); }
+function slotWidth(sel) { const e = typeof sel === "string" ? document.querySelector(sel) : sel; return chartWidth(e); }
+
+/** Horizontal bars with CI whiskers. rows: {label, p, lo, hi, n, color, tipExtra} */
+function hBars(rows, opt = {}) {
+  const W = opt.width || 760, labW = Math.min(opt.labW || 260, W * .42), rowH = 30, top = 22, plotW = W - labW - 70;
+  const max = opt.max ?? Math.min(1, Math.max(0.05, ...rows.map(r => isNaN(r.hi) ? r.p : r.hi)) * 1.08);
+  const H = top + rows.length * rowH + 8; const x = p => labW + (p / max) * plotW;
+  let s = svgOpen(W, H);
+  const ticks = niceTicks(0, max, 5);
+  ticks.forEach(t => { s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 6}" y2="${H - 6}"/><text class="muted" x="${x(t)}" y="12" text-anchor="middle">${opt.mean ? t.toFixed(1) : Math.round(t * 100) + "%"}</text>`; });
+  rows.forEach((r, i) => {
+    const y = top + i * rowH, low = r.n < MIN_N, sup = r.n < SUP_N;
+    const L = wrapText(r.label, Math.floor(labW / 6.6)); const ly = y + rowH / 2 - (L.length > 1 ? 6 : -4);
+    s += `<text class="ink" x="${labW - 10}" y="${ly}" text-anchor="end">${L.slice(0, 2).map((l, k) => `<tspan x="${labW - 10}" dy="${k ? 13 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+    if (sup) { s += `<text class="muted" x="${labW + 4}" y="${y + rowH / 2 + 4}">n &lt; ${SUP_N} — suppressed</text>`; return; }
+    const bw = Math.max(0, x(r.p) - labW); const c = r.color || css("--accent");
+    const tipTxt = `<b>${esc(r.label)}</b><br>${opt.mean ? fmt1(r.p) : fmtP(r.p, 1)} (95% CI ${opt.mean ? fmt1(r.lo) + "–" + fmt1(r.hi) : fmtP(r.lo, 1) + "–" + fmtP(r.hi, 1)})<br>n = ${fmtN(r.n)}${low ? " · <i>small base</i>" : ""}${r.tipExtra || ""}`;
+    s += `<g data-tip="${esc(tipTxt)}"><rect x="${labW}" y="${y + 2}" width="${plotW + 60}" height="${rowH - 4}" fill="transparent"/>`;
+    s += `<rect x="${labW}" y="${y + 7}" width="${bw}" height="${rowH - 14}" rx="3" fill="${c}" ${low ? 'opacity=".45"' : ""}/>`;
+    if (!isNaN(r.lo)) s += `<line x1="${x(r.lo)}" x2="${x(r.hi)}" y1="${y + rowH / 2}" y2="${y + rowH / 2}" stroke="var(--ink)" stroke-opacity=".55" stroke-width="1.2"/><line x1="${x(r.lo)}" x2="${x(r.lo)}" y1="${y + rowH / 2 - 4}" y2="${y + rowH / 2 + 4}" stroke="var(--ink)" stroke-opacity=".55"/><line x1="${x(r.hi)}" x2="${x(r.hi)}" y1="${y + rowH / 2 - 4}" y2="${y + rowH / 2 + 4}" stroke="var(--ink)" stroke-opacity=".55"/>`;
+    s += `<text class="ink" x="${Math.max(x(r.p), isNaN(r.hi) ? 0 : x(r.hi)) + 6}" y="${y + rowH / 2 + 4}" font-weight="600">${opt.mean ? fmt1(r.p) : fmtP(r.p)}${low ? "*" : ""}</text></g>`;
+  });
+  return s + "</svg>";
+}
+function niceTicks(lo, hi, n) { const span = hi - lo; const step0 = span / n; const mag = 10 ** Math.floor(Math.log10(step0)); const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= n) || step0; const out = []; for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) out.push(+t.toFixed(10)); return out; }
+
+/** 100% stacked bars. groups: {label, n, segs:[{code,label,p}]}; colors: Map code->color */
+function stacked(groups, colors, opt = {}) {
+  const W = opt.width || 760, labW = Math.min(opt.labW || 220, W * .36), rowH = opt.rowH || 30, top = 22, plotW = W - labW - 54;
+  const H = top + groups.length * rowH + 6; const x = p => labW + p * plotW;
+  let s = svgOpen(W, H);
+  [0, .25, .5, .75, 1].forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 6}" y2="${H - 4}"/><text class="muted" x="${x(t)}" y="12" text-anchor="middle">${t * 100}%</text>`);
+  groups.forEach((g, i) => {
+    const y = top + i * rowH, low = g.n < MIN_N;
+    const L = wrapText(g.label, Math.floor(labW / 6.6)); const ly = y + rowH / 2 - (L.length > 1 ? 6 : -4);
+    s += `<text class="${g.bold ? "ink" : ""}" ${g.bold ? 'font-weight="650"' : ""} x="${labW - 10}" y="${ly}" text-anchor="end">${L.slice(0, 2).map((l, k) => `<tspan x="${labW - 10}" dy="${k ? 13 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+    if (g.n < SUP_N) { s += `<text class="muted" x="${labW + 4}" y="${y + rowH / 2 + 4}">n &lt; ${SUP_N} — suppressed</text>`; return; }
+    let acc = 0;
+    g.segs.forEach(sg => {
+      if (!(sg.p > 0)) return; const x0 = x(acc), w = sg.p * plotW; acc += sg.p; const col = colors.get(sg.code) || "#999";
+      const t = `<b>${esc(g.label)}</b><br>${esc(sg.label)}: <b>${fmtP(sg.p, 1)}</b>${sg.lo != null ? ` (CI ${fmtP(sg.lo, 0)}–${fmtP(sg.hi, 0)})` : ""}<br>group n = ${fmtN(g.n)}${low ? " · <i>small base</i>" : ""}`;
+      s += `<g data-tip="${esc(t)}"><rect x="${x0 + 1}" y="${y + 5}" width="${Math.max(0, w - 2)}" height="${rowH - 10}" rx="2" fill="${col}" ${low ? 'opacity=".5"' : ""}/>`;
+      if (w > 30) s += `<text x="${x0 + w / 2}" y="${y + rowH / 2 + 4}" text-anchor="middle" style="fill:${textOn(col)};font-size:11px;pointer-events:none">${Math.round(sg.p * 100)}</text>`;
+      s += `</g>`;
+    });
+    s += `<text class="muted" x="${x(1) + 6}" y="${y + rowH / 2 + 4}" font-size="11">${fmtN(g.n)}${low ? "*" : ""}</text>`;
+  });
+  return s + "</svg>";
+}
+function legendHTML(cats, colors) { return `<div class="legend">${cats.map(c => `<span><i style="background:${colors.get(c.code)}"></i>${esc(c.label)}</span>`).join("")}</div>`; }
+
+/** Dot + whisker for means. rows {label,m,lo,hi,n,color} */
+function dotPlot(rows, lo, hi, opt = {}) {
+  const W = opt.width || 760, labW = Math.min(opt.labW || 240, W * .4), rowH = 28, top = 26, plotW = W - labW - 50;
+  const H = top + rows.length * rowH + (opt.endLabels ? 24 : 8); const x = v => labW + (v - lo) / (hi - lo) * plotW;
+  let s = svgOpen(W, H);
+  niceTicks(lo, hi, opt.ticks || 10).forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 8}" y2="${H - (opt.endLabels ? 20 : 4)}"/><text class="muted" x="${x(t)}" y="14" text-anchor="middle">${+t.toFixed(2)}</text>`);
+  if (opt.endLabels) { s += `<text class="muted" x="${labW}" y="${H - 4}" font-size="11">${esc(opt.endLabels[0])}</text><text class="muted" x="${labW + plotW}" y="${H - 4}" text-anchor="end" font-size="11">${esc(opt.endLabels[1])}</text>`; }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2; const low = r.n < MIN_N;
+    s += `<text class="ink" x="${labW - 10}" y="${y + 4}" text-anchor="end">${esc(r.label.length > 38 ? r.label.slice(0, 36) + "…" : r.label)}</text>`;
+    if (r.n < SUP_N || isNaN(r.m)) { s += `<text class="muted" x="${labW + 4}" y="${y + 4}">n &lt; ${SUP_N}</text>`; return; }
+    const c = r.color || css("--accent");
+    const t = `<b>${esc(r.label)}</b><br>Mean ${r.m.toFixed(2)} (95% CI ${r.lo.toFixed(2)}–${r.hi.toFixed(2)})<br>n = ${fmtN(r.n)}${low ? " · <i>small base</i>" : ""}`;
+    s += `<g data-tip="${esc(t)}"><rect x="${labW}" y="${y - rowH / 2}" width="${plotW}" height="${rowH}" fill="transparent"/><line x1="${x(r.lo)}" x2="${x(r.hi)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="2.5" stroke-opacity=".55"/><circle cx="${x(r.m)}" cy="${y}" r="5.5" fill="${c}" stroke="var(--surface)" stroke-width="2" ${low ? 'fill-opacity=".5"' : ""}/>`;
+    s += `<text class="ink" x="${x(Math.min(hi, r.hi)) + 8}" y="${y + 4}" font-size="11.5">${r.m.toFixed(opt.dp ?? 1)}${low ? "*" : ""}</text></g>`;
+  });
+  return s + "</svg>";
+}
+
+/** Heatmap table. rows [{label,n, cells:[{v, txt, tip}]}], cols [labels] */
+function heatTable(cols, rows, opt = {}) {
+  const lo = opt.lo ?? 0, hi = opt.hi ?? 1, a = css("--seq-0"), b = css("--seq-1");
+  let h = `<div class="tablewrap" style="max-height:none"><table class="data"><thead><tr><th>${esc(opt.corner || "")}</th>${cols.map(c => `<th>${esc(c)}</th>`).join("")}${opt.nCol ? "<th>n</th>" : ""}</tr></thead><tbody>`;
+  rows.forEach(r => {
+    h += `<tr><td>${esc(r.label)}</td>`;
+    r.cells.forEach(c => {
+      if (c.v == null || isNaN(c.v)) { h += `<td class="sup">—</td>`; return; }
+      const t = Math.max(0, Math.min(1, (c.v - lo) / (hi - lo))); const bg = mix(a, b, t);
+      h += `<td data-tip="${esc(c.tip || "")}" style="background:${bg};color:${textOn(bg)};${c.low ? "font-style:italic;opacity:.65" : ""}">${c.txt}</td>`;
+    });
+    if (opt.nCol) h += `<td class="${r.n < MIN_N ? "low" : ""}">${fmtN(r.n)}</td>`;
+    h += `</tr>`;
+  });
+  return h + "</tbody></table></div>";
+}
+
+/* ---------- table + CSV ---------- */
+function csvDownload(name, rows) {
+  const s = rows.map(r => r.map(x => { x = x == null ? "" : String(x); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; }).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + s], { type: "text/csv" })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function baseText(d, extra = "") {
+  const wn = { vwgt: "vote-validated weight (vwgt)", bwgt: "demographic weight (bwgt)", mwgt: "Māori-subsample weight (mwgt)", none: "no weight" }[S.weight];
+  const f = S.fVar ? ` · filtered to <b>${esc(V[S.fVar].t)} = ${esc(lab(S.fVar, S.fVal))}</b>` : "";
+  return `<div class="basebar">Base: <b>${fmtN(d.n)}</b> respondents with a ${S.dk ? "" : "substantive "}answer · effective n ≈ <b>${fmtN(d.neff)}</b> · ${wn}${f}${extra}. Bars show 95% confidence intervals; * = fewer than ${MIN_N} respondents.</div>`;
+}
+
+/* ============================================================ tabs & globals */
+const TABS = [["overview", "Overview"], ["explore", "Explorer"], ["parties", "Party landscape"], ["flows", "Vote flows"], ["groups", "Who voted for whom"], ["issues", "Issues"], ["methods", "Methods"]];
+$("#tabs").innerHTML = TABS.map(([k, t]) => `<button role="tab" data-tab="${k}">${t}</button>`).join("");
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.tab); });
+function go(tab, push = true) {
+  S.tab = tab; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  document.querySelectorAll("section.view").forEach(s => s.classList.toggle("active", s.id === "v-" + tab));
+  if (push) writeHash(); render();
+}
+const FEATURED_BY = ["mvpartyvote", "mleftorright", "ageband", "mgender", "methnic", "mmaori", "meducate", "H30", "oesch5_moesch5", "mreldom", "murbrur", "mauckland", "maoriel_23w", "H22", "B6grp", "msample", "medium"];
+// derived grouping for self-placement (left/centre/right)
+(function addSelfPlacement() {
+  const c = COL.B6, a = new Float64Array(N); for (let i = 0; i < N; i++) { const x = c[i]; a[i] = isNaN(x) ? NaN : x === 99 ? 9 : x <= 3 ? 1 : x <= 6 ? 2 : 3; }
+  COL.B6grp = a; V.B6grp = { n: "B6grp", q: "", t: "Left–right self-placement (grouped)", it: "", st: "", sec: "Derived & coded", grp: "Attitude scales", bat: "", k: "cat", lab: { 1: "Left (0–3)", 2: "Centre (4–6)", 3: "Right (7–10)", 9: "Don’t know" }, miss: new Set([9]), bk: true };
+  NZES.vars.push(V.B6grp);
+})();
+const BYVARS = NZES.vars.filter(v => v.bk);
+function fillFilterVars() {
+  const sel = $("#gFilterVar");
+  sel.innerHTML = `<option value="">Everyone</option><optgroup label="Common">${FEATURED_BY.filter(k => V[k]).map(k => `<option value="${k}">${esc(V[k].t)}</option>`).join("")}</optgroup><optgroup label="All other">${BYVARS.filter(v => !FEATURED_BY.includes(v.n)).map(v => `<option value="${v.n}">${esc(v.n)} · ${esc(v.t.slice(0, 60))}</option>`).join("")}</optgroup>`;
+}
+fillFilterVars();
+$("#gFilterVar").addEventListener("change", e => {
+  S.fVar = e.target.value; const vs = $("#gFilterVal");
+  if (!S.fVar) { vs.hidden = true; S.fVal = null; } else { const cs = codesOf(S.fVar).filter(c => substantive(S.fVar, c)); vs.innerHTML = cs.map(c => `<option value="${c}">${esc(lab(S.fVar, c))}</option>`).join(""); vs.hidden = false; S.fVal = cs[0]; }
+  writeHash(); render();
+});
+$("#gFilterVal").addEventListener("change", e => { S.fVal = +e.target.value; writeHash(); render(); });
+$("#gWeight").addEventListener("change", e => { S.weight = e.target.value; writeHash(); render(); });
+$("#gDK").addEventListener("change", e => { S.dk = e.target.checked; writeHash(); render(); });
+$("#themeBtn").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const nx = cur === "dark" ? "light" : "dark"; document.documentElement.setAttribute("data-theme", nx); try { localStorage.setItem("nzes-theme", nx); } catch (e) { } render();
+});
+try { const t = localStorage.getItem("nzes-theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) { }
+addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(render, 150); });
+
+function writeHash() {
+  const p = new URLSearchParams(); p.set("tab", S.tab); if (S.weight !== "vwgt") p.set("w", S.weight); if (S.dk) p.set("dk", "1");
+  if (S.fVar) { p.set("f", S.fVar); p.set("fv", S.fVal); }
+  if (S.tab === "explore") { p.set("var", S.xVar); if (S.xBy) p.set("by", S.xBy); if (S.xView !== "dist") p.set("view", S.xView); }
+  history.replaceState(null, "", "#" + p.toString());
+}
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.get("w") && WTS[p.get("w")]) S.weight = p.get("w"); S.dk = p.get("dk") === "1";
+  if (p.get("var") && V[p.get("var")]) S.xVar = p.get("var"); if (p.get("by") && V[p.get("by")]) S.xBy = p.get("by"); if (p.get("view")) S.xView = p.get("view");
+  if (p.get("f") && V[p.get("f")]) { S.fVar = p.get("f"); S.fVal = +p.get("fv"); }
+  $("#gWeight").value = S.weight; $("#gDK").checked = S.dk;
+  if (S.fVar) { $("#gFilterVar").value = S.fVar; const vs = $("#gFilterVal"); const cs = codesOf(S.fVar).filter(c => substantive(S.fVar, c)); vs.innerHTML = cs.map(c => `<option value="${c}">${esc(lab(S.fVar, c))}</option>`).join(""); vs.value = S.fVal; vs.hidden = false; }
+  return p.get("tab") || "overview";
+}
+
+function render() {
+  if (S.weight === "mwgt" && !S._mw) { S._mw = 1; }
+  ({ overview: renderOverview, explore: renderExplore, parties: renderParties, flows: renderFlows, groups: renderGroups, issues: renderIssues, methods: renderMethods })[S.tab]();
+}
+function filterNote() {
+  let s = "";
+  if (S.weight === "mwgt") s += `<div class="warnbox">Māori-subsample weight is active: only respondents of Māori descent are included (effective n ≈ 200, so intervals are wide).</div>`;
+  if (S.weight === "none") s += `<div class="warnbox">Unweighted: Māori, young people and the 2020 panel are over-represented, so these figures are not population estimates.</div>`;
+  return s;
+}
+
+/* ============================================================ OVERVIEW */
+const PARTY_ORDER = [[2, "National"], [1, "Labour"], [3, "Green"], [4, "ACT"], [5, "NZ First"], [6, "Te Pāti Māori"], [7, "Another party"]];
+function renderOverview() {
+  const el = $("#v-overview"); const W = cardW(el, true);
+  const mask = filterMask();
+  const all = dist("mvpartyvote", mask, { dk: false });
+  const voters = all.cats.filter(c => c.code >= 1 && c.code <= 7); const vt = voters.reduce((a, c) => a + c.sw, 0);
+  const non = all.cats.find(c => c.code === 0);
+  const wAll = weightVec(); let sw = 0, sw2 = 0; for (let i = 0; i < N; i++) if (mask[i]) { sw += wAll[i]; sw2 += wAll[i] ** 2; }
+  const neff = sw * sw / sw2; const nAll = mask.reduce((a, b) => a + b, 0);
+  const off = NZES.meta.official; const offKey = { 1: "Labour", 2: "National", 3: "Green", 4: "ACT", 5: "NZ First", 6: "Maori", 7: "Another" };
+  const turnout = non ? 1 - non.sw / all.sw : NaN;
+  const panel = (() => { let n = 0; const c = COL.msample; for (let i = 0; i < N; i++) if (mask[i] && c[i] === 5) n++; return n; })();
+
+  // validation chart: paired bars
+  const rows = PARTY_ORDER.map(([code, name]) => { const c = voters.find(x => x.code === code); const p = c ? c.sw / vt : NaN; const neffV = all.neff * (vt / all.sw); const [lo, hi] = wilson(p, neffV); return { code, name, p, lo, hi, n: c ? c.n : 0, off: off[offKey[code]] / 100 }; });
+  const labW = 110, rowH = 40, top = 24, plotW = Math.max(160, W - labW - 70), max = .45; const H = top + rows.length * rowH + 8; const x = p => labW + p / max * plotW;
+  let s = svgOpen(labW + plotW + 70, H);
+  niceTicks(0, max, 5).forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 6}" y2="${H - 4}"/><text class="muted" x="${x(t)}" y="12" text-anchor="middle">${Math.round(t * 100)}%</text>`);
+  rows.forEach((r, i) => {
+    const y = top + i * rowH, col = partyColor(r.name) || css("--p-oth");
+    const t = `<b>${r.name}</b><br>Survey (weighted): <b>${fmtP(r.p, 1)}</b> (CI ${fmtP(r.lo, 1)}–${fmtP(r.hi, 1)})<br>Official result: <b>${(r.off * 100).toFixed(1)}%</b><br>n = ${fmtN(r.n)}`;
+    s += `<g data-tip="${esc(t)}"><rect x="0" y="${y}" width="${labW + plotW + 70}" height="${rowH}" fill="transparent"/><text class="ink" x="${labW - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${r.name}</text>`;
+    s += `<rect x="${labW}" y="${y + 6}" width="${x(r.p) - labW}" height="13" rx="3" fill="${col}"/>`;
+    s += `<rect x="${labW}" y="${y + 22}" width="${x(r.off) - labW}" height="9" rx="2" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+    s += `<line x1="${x(r.lo)}" x2="${x(r.hi)}" y1="${y + 12.5}" y2="${y + 12.5}" stroke="var(--ink)" stroke-opacity=".5"/>`;
+    s += `<text class="ink" x="${Math.max(x(r.hi), x(r.off)) + 6}" y="${y + 17}" font-weight="600">${fmtP(r.p, 1)}</text><text class="muted" x="${Math.max(x(r.hi), x(r.off)) + 6}" y="${y + 31}" font-size="11">${(r.off * 100).toFixed(1)}%</text></g>`;
+  });
+  s += "</svg>";
+
+  // sample composition
+  const comp = dist("msample", mask, { dk: true });
+  el.innerHTML = `
+  ${filterNote()}
+  <div class="tiles">
+    <div class="tile"><div class="v">${fmtN(nAll)}</div><div class="l">respondents${S.fVar ? " in filter" : ""}</div></div>
+    <div class="tile"><div class="v">≈ ${fmtN(neff)}</div><div class="l">effective sample size after weighting (design effect ${(nAll / neff).toFixed(2)})</div></div>
+    <div class="tile"><div class="v">${fmtP(turnout, 1)}</div><div class="l">turnout in weighted sample (official: ${off.turnout}% of enrolled)</div></div>
+    <div class="tile"><div class="v">${fmtN(panel)}</div><div class="l">also took part in NZES 2020 (panel)</div></div>
+    <div class="tile"><div class="v">${NZES.vars.length}</div><div class="l">variables available here</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Does the weighted sample reproduce the election?</h2>
+      <p class="sub">Validated party vote among voters (solid bars, with 95% CI) against the official 2023 result (dashed outline). The vote-validated weight is calibrated to the actual result, so close agreement is expected with <i>vwgt</i>; switch the weight above to see how far the raw or demographic-only sample sits from it.</p>
+      <div class="chart">${s}</div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Survey, weighted</span><span><i style="border:1.5px dashed var(--ink-2);background:none"></i>Official result (Electoral Commission)</span></div>
+    </div>
+    <div class="card"><h2>About this study</h2>
+      <p class="sub">The 2023 New Zealand Election Study is a post-election survey drawn from the electoral roll, completed by mail or online between October 2023 and April 2024. Whether each respondent actually voted was checked against the marked rolls.</p>
+      <h3>Sample components</h3>
+      <table class="data"><thead><tr><th>Component</th><th>Respondents</th><th>Weighted share</th></tr></thead><tbody>
+      ${comp.cats.map(c => `<tr><td>${esc(c.label)}</td><td>${fmtN(c.n)}</td><td>${fmtP(c.p, 1)}</td></tr>`).join("")}</tbody></table>
+      <h3>Where to start</h3>
+      <ul class="sub" style="padding-left:18px;margin:0">
+        <li><a href="#" data-go="explore" data-var="A11b" data-by="mvpartyvote">Trust in government, by party vote</a></li>
+        <li><a href="#" data-go="explore" data-var="C9a" data-by="mmaori">Co-governance, Māori vs non-Māori</a></li>
+        <li><a href="#" data-go="explore" data-var="C12" data-view="battery" data-by="">Economic & Treaty opinion battery (C12)</a></li>
+        <li><a href="#" data-go="explore" data-var="B4" data-by="ageband">Preferred PM by age group</a></li>
+        <li><a href="#" data-go="parties">Where voters place the parties on left–right</a></li>
+        <li><a href="#" data-go="flows">How 2020 voters moved in 2023</a></li>
+      </ul>
+    </div>
+  </div>`;
+  el.querySelectorAll("[data-go]").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault(); const d = a.dataset;
+    if (d.var) { S.xVar = V[d.var] ? d.var : NZES.vars.find(v => v.bat === d.var)?.n || S.xVar; S.xBy = d.by || ""; S.xView = d.view || "dist"; }
+    go(d.go);
+  }));
+}
+
+/* ============================================================ EXPLORER */
+function buildList(filter = "") {
+  const f = filter.trim().toLowerCase(); const groups = new Map();
+  NZES.vars.forEach(v => {
+    const hay = (v.n + " " + v.t + " " + v.it + " " + v.st + " " + Object.values(v.lab).join(" ")).toLowerCase();
+    if (f && !f.split(/\s+/).every(w => hay.includes(w))) return;
+    const g = v.sec === "Derived & coded" ? "Derived · " + (v.grp || "Other") : v.sec;
+    if (!groups.has(g)) groups.set(g, []); groups.get(g).push(v);
+  });
+  let h = "";
+  const keys = [...groups.keys()].sort((a, b) => (a.startsWith("Derived") - b.startsWith("Derived")) || a.localeCompare(b));
+  for (const g of keys) { const vs = groups.get(g);
+    const open = f || vs.some(v => v.n === S.xVar);
+    h += `<details ${open ? "open" : ""}><summary>${esc(g)}<span class="c">${vs.length}</span></summary>${vs.map(v => `<div class="vitem ${v.n === S.xVar ? "sel" : ""}" data-v="${v.n}"><code>${esc(v.n.length > 9 ? v.n.slice(0, 8) + "…" : v.n)}</code><span>${esc(titleOf(v.n))}</span></div>`).join("")}</details>`;
+  }
+  $("#vlist").innerHTML = h || `<div class="empty">No matches</div>`;
+}
+$("#q").addEventListener("input", e => buildList(e.target.value));
+$("#vlist").addEventListener("click", e => { const it = e.target.closest(".vitem"); if (!it) return; S.xVar = it.dataset.v; if (S.xView === "battery" && !V[S.xVar].bat) S.xView = "dist"; document.querySelectorAll(".vitem.sel").forEach(x => x.classList.remove("sel")); it.classList.add("sel"); writeHash(); renderExplore(false); });
+
+function byOptions(cur) {
+  return `<option value="">— none —</option><optgroup label="Common breakdowns">${FEATURED_BY.filter(k => V[k] && k !== S.xVar).map(k => `<option value="${k}" ${k === cur ? "selected" : ""}>${esc(V[k].t)}</option>`).join("")}</optgroup><optgroup label="Any other question">${BYVARS.filter(v => !FEATURED_BY.includes(v.n) && v.n !== S.xVar).map(v => `<option value="${v.n}" ${v.n === cur ? "selected" : ""}>${esc(v.n)} · ${esc(titleOf(v.n).slice(0, 70))}</option>`).join("")}</optgroup>`;
+}
+function renderExplore(rebuildList = true) {
+  if (rebuildList) buildList($("#q").value);
+  const v = S.xVar, meta = V[v]; const el = $("#xmain");
+  const batVars = meta.bat ? NZES.vars.filter(x => x.bat === meta.bat) : [];
+  const canBattery = batVars.length > 1;
+  const canMean = meta.k === "scale" || meta.k === "num" || isOrdinal(v);
+  if (S.xView === "battery" && !canBattery) S.xView = "dist";
+  if (S.xView === "mean" && !canMean) S.xView = "dist";
+  if (meta.k === "num" && S.xView === "dist") S.xView = "mean";
+  const stem = meta.st && meta.st !== meta.it ? `<p class="stem">${esc(meta.st)}</p>` : "";
+  const head = `<div class="qhead"><span class="code">${esc(v)}</span><h2>${esc(titleOf(v))}</h2>${meta.it && meta.t !== meta.it ? "" : ""}${stem}
+     <div class="note">${esc(meta.sec)}${meta.grp ? " · " + esc(meta.grp) : ""} · ${{ cat: "single choice", multi: "tick-box (selected / not selected)", scale: "0–10 scale", num: "numeric" }[meta.k]}${meta.miss.size ? " · non-substantive codes: " + [...meta.miss].map(c => esc(lab(v, c))).join(", ") : ""}</div></div>`;
+  const controls = `<div class="controls">
+    <label>Break down by <select id="xBy" style="max-width:340px">${byOptions(S.xBy)}</select></label>
+    <span class="seg" role="group" aria-label="View">
+      <button data-view="dist" aria-pressed="${S.xView === "dist"}" ${meta.k === "num" ? "disabled" : ""}>Distribution</button>
+      <button data-view="mean" aria-pressed="${S.xView === "mean"}" ${canMean ? "" : "disabled"} title="${meta.k === "cat" ? "Mean of the answer codes (lower code = first option)" : ""}">Mean</button>
+      <button data-view="battery" aria-pressed="${S.xView === "battery"}" ${canBattery ? "" : "disabled"}>All ${canBattery ? batVars.length + " items in " + esc(meta.bat) : "items"}</button>
+    </span></div>`;
+  el.innerHTML = `<div class="card">${head}${controls}${filterNote()}<div id="xchart" class="chart"></div><div id="xextra"></div></div>`;
+  el.querySelector("#xBy").addEventListener("change", e => { S.xBy = e.target.value; writeHash(); renderExplore(false); });
+  el.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { S.xView = b.dataset.view; writeHash(); renderExplore(false); }));
+  const W = chartWidth($("#xchart"));
+  if (S.xView === "battery") return renderBattery(batVars.map(x => x.n), W);
+  if (S.xView === "mean") return renderMean(v, W);
+  return renderDist(v, W);
+}
+function groupsOf(by, mask) { return codesOf(by).filter(c => substantive(by, c)).map(c => ({ code: c, label: lab(by, c), mask: andMask(mask, by, c) })); }
+
+function renderDist(v, W) {
+  const mask = filterMask(); const meta = V[v]; const out = $("#xchart"), extra = $("#xextra");
+  const d = dist(v, mask);
+  if (!d.n) { out.innerHTML = `<div class="empty">No respondents in this base.</div>`; return; }
+  const colors = colorsFor(v, d.cats);
+  if (!S.xBy) {
+    let cats = d.cats;
+    if (meta.k === "multi") cats = cats.filter(c => c.code === 1);
+    out.innerHTML = hBars(cats.map(c => ({ label: c.label, p: c.p, lo: c.lo, hi: c.hi, n: c.n, color: meta.k === "multi" ? css("--accent") : colors.get(c.code) })), { width: W });
+    const tbl = [["Answer", "Weighted %", "95% CI low", "95% CI high", "Respondents (n)"], ...d.cats.map(c => [c.label, (c.p * 100).toFixed(1), (c.lo * 100).toFixed(1), (c.hi * 100).toFixed(1), c.n])];
+    extra.innerHTML = baseText(d) + tableBlock(tbl, `${v}.csv`);
+    return;
+  }
+  const by = S.xBy; const groups = groupsOf(by, mask);
+  const res = groups.map(g => ({ ...g, d: dist(v, g.mask) }));
+  const table = res.map(r => r.d.cats.map(c => c.sw)); const chi = chiTest(table, d.neff);
+  if (meta.k === "multi") {
+    out.innerHTML = hBars([{ label: "All respondents", ...pick(d.cats.find(c => c.code === 1)), n: d.n, color: css("--ink-2") }, ...res.map(r => { const c = r.d.cats.find(c => c.code === 1) || {}; return { label: r.label, p: c.p, lo: c.lo, hi: c.hi, n: r.d.n, color: isPartyVar(by) ? partyColor(r.label) : css("--accent") }; })], { width: W });
+  } else {
+    const groupsData = [{ label: "All respondents", n: d.n, bold: true, segs: d.cats }, ...res.map(r => ({ label: r.label, n: r.d.n, segs: r.d.cats }))];
+    out.innerHTML = legendHTML(d.cats, colors) + stacked(groupsData, colors, { width: W });
+  }
+  const hdr = ["Group", ...d.cats.map(c => c.label), "n", "Effective n"];
+  const tbl = [hdr, ["All respondents", ...d.cats.map(c => (c.p * 100).toFixed(1)), d.n, Math.round(d.neff)], ...res.map(r => [r.label, ...r.d.cats.map(c => r.d.n < SUP_N ? "" : (c.p * 100).toFixed(1)), r.d.n, Math.round(r.d.neff)])];
+  const chiTxt = chi ? ` · Design-adjusted χ²(${chi.df}) = ${chi.X.toFixed(1)}, p ${chi.p < .001 ? "< 0.001" : "= " + chi.p.toFixed(3)}, Cramér’s V = ${chi.V.toFixed(2)}` : "";
+  extra.innerHTML = baseText(d, chiTxt) + tableBlock(tbl, `${v}_by_${by}.csv`, true);
+}
+function pick(c) { return c ? { p: c.p, lo: c.lo, hi: c.hi } : { p: NaN }; }
+function tableBlock(rows, file, pctTable = false) {
+  const id = "t" + Math.random().toString(36).slice(2, 8);
+  const h = `<div class="tbtns"><button class="iconbtn" data-toggle="${id}">Show table</button><button class="iconbtn" data-csv="${id}">Download CSV</button></div>
+  <div class="tablewrap" id="${id}" hidden><table class="data"><thead><tr>${rows[0].map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.slice(1).map((r, i) => {
+    const n = pctTable ? r[r.length - 2] : null;
+    return `<tr class="${pctTable && i === 0 ? "total" : ""}">${r.map((x, j) => `<td class="${pctTable && n < MIN_N && j > 0 ? "low" : ""}">${x === "" ? "—" : esc(typeof x === "number" ? fmtN(x) : x)}</td>`).join("")}</tr>`;
+  }).join("")}</tbody></table></div>`;
+  setTimeout(() => {
+    document.querySelector(`[data-toggle="${id}"]`)?.addEventListener("click", e => { const t = document.getElementById(id); t.hidden = !t.hidden; e.target.textContent = t.hidden ? "Show table" : "Hide table"; });
+    document.querySelector(`[data-csv="${id}"]`)?.addEventListener("click", () => csvDownload(file, rows));
+  });
+  return h;
+}
+function scaleRange(v) { const meta = V[v]; if (meta.k === "scale") return [0, 10]; if (meta.k === "num") { const c = COL[v]; let lo = Infinity, hi = -Infinity; for (let i = 0; i < N; i++) if (!isNaN(c[i]) && !meta.miss.has(c[i])) { lo = Math.min(lo, c[i]); hi = Math.max(hi, c[i]); } return [lo, hi]; } const cs = codesOf(v).filter(c => substantive(v, c)); return [cs[0], cs[cs.length - 1]]; }
+function renderMean(v, W) {
+  const mask = filterMask(); const meta = V[v]; const out = $("#xchart"), extra = $("#xextra");
+  const all = meanOf(v, mask); let [lo, hi] = scaleRange(v);
+  const rows = [{ label: "All respondents", ...all, color: css("--ink-2") }];
+  if (S.xBy) groupsOf(S.xBy, mask).forEach(g => rows.push({ label: g.label, ...meanOf(v, g.mask), color: isPartyVar(S.xBy) ? partyColor(g.label) : css("--accent") }));
+  if (meta.k === "num") { const ms = rows.filter(r => r.n >= SUP_N); lo = Math.min(lo, ...ms.map(r => r.lo)); hi = Math.min(hi, Math.max(...ms.map(r => r.hi)) * 1.15); lo = Math.max(lo, 0); }
+  const cs = codesOf(v).filter(c => substantive(v, c));
+  const ends = meta.k === "num" ? null : [lab(v, cs[0]), lab(v, cs[cs.length - 1])];
+  out.innerHTML = dotPlot(rows, lo, hi, { width: W, endLabels: ends, dp: meta.k === "num" && hi <= 1 ? 2 : 1, ticks: meta.k === "scale" ? 10 : 6 });
+  let hist = "";
+  if (meta.k === "num") { // quick histogram summary
+    const c = COL[v], w = weightVec(); const vals = []; for (let i = 0; i < N; i++) if (mask[i] && !isNaN(c[i]) && !meta.miss.has(c[i])) vals.push([c[i], w[i]]);
+    vals.sort((a, b) => a[0] - b[0]); const T = vals.reduce((a, b) => a + b[1], 0); const q = p => { let acc = 0; for (const [x, ww] of vals) { acc += ww; if (acc >= p * T) return x; } return NaN; };
+    hist = `<p class="note">Weighted quartiles: 25th = ${q(.25)}, median = ${q(.5)}, 75th = ${q(.75)}.</p>`;
+  }
+  const tbl = [["Group", "Mean", "95% CI low", "95% CI high", "n", "Effective n"], ...rows.map(r => [r.label, r.m.toFixed(2), r.lo.toFixed(2), r.hi.toFixed(2), r.n, Math.round(r.neff)])];
+  extra.innerHTML = (meta.k === "cat" ? `<p class="note">Mean of answer codes ${cs[0]} = “${esc(lab(v, cs[0]))}” to ${cs[cs.length - 1]} = “${esc(lab(v, cs[cs.length - 1]))}”. Treat as an index, not a quantity.</p>` : "") + hist + baseText({ n: all.n, neff: all.neff }) + tableBlock(tbl, `${v}_mean.csv`);
+}
+function renderBattery(vs, W) {
+  const mask0 = filterMask(); const out = $("#xchart"), extra = $("#xextra"); const k = V[vs[0]].k;
+  let mask = mask0; let note = "";
+  if (S.xBy) {
+    const cs = codesOf(S.xBy).filter(c => substantive(S.xBy, c));
+    note = `<div class="controls"><label>Show group <select id="bgrp">${cs.map(c => `<option value="${c}" ${S.bGrp === c ? "selected" : ""}>${esc(lab(S.xBy, c))}</option>`).join("")}</select></label></div>`;
+    if (!cs.includes(S.bGrp)) S.bGrp = cs[0]; mask = andMask(mask0, S.xBy, S.bGrp);
+  }
+  const itemLabel = x => V[x].it || V[x].t;
+  let html = "", tbl;
+  if (k === "multi") {
+    const rows = vs.map(x => { const d = dist(x, mask, { dk: false }); const c = d.cats.find(c => c.code === 1) || {}; return { label: itemLabel(x) + (V[x].lab[1] && V[x].lab[1] !== "Yes" && !itemLabel(x).includes(V[x].lab[1]) ? "" : ""), p: c.p, lo: c.lo, hi: c.hi, n: d.n, color: partyColor(V[x].lab[1] || "") || css("--accent") }; });
+    rows.forEach((r, i) => { const L = V[vs[i]].lab[1]; if (L && L !== "Yes" && L.length < 50) r.label = L; });
+    html = hBars(rows, { width: W, labW: 300 }); tbl = [["Item", "% selected", "CI low", "CI high", "n"], ...rows.map(r => [r.label, (r.p * 100).toFixed(1), (r.lo * 100).toFixed(1), (r.hi * 100).toFixed(1), r.n])];
+  } else if (k === "scale" || S.xView === "mean") {
+    const rows = vs.map(x => ({ label: itemLabel(x), ...meanOf(x, mask), color: partyColor(itemLabel(x).replace(/^.*(like or dislike|place)\s+/i, "").replace(/\?.*$/, "").replace(/ on the.*$/, "")) || css("--accent") }));
+    html = dotPlot(rows, 0, 10, { width: W, labW: 320 }); tbl = [["Item", "Mean", "CI low", "CI high", "n"], ...rows.map(r => [r.label, r.m.toFixed(2), r.lo.toFixed(2), r.hi.toFixed(2), r.n])];
+  } else {
+    const ds = vs.map(x => dist(x, mask)); const colors = colorsFor(vs[0], ds[0].cats);
+    html = legendHTML(ds[0].cats, colors) + stacked(ds.map((d, i) => ({ label: itemLabel(vs[i]), n: d.n, segs: d.cats })), colors, { width: W, labW: 320, rowH: 36 });
+    tbl = [["Item", ...ds[0].cats.map(c => c.label), "n"], ...ds.map((d, i) => [itemLabel(vs[i]), ...d.cats.map(c => (c.p * 100).toFixed(1)), d.n])];
+  }
+  out.innerHTML = note + html;
+  const g = $("#bgrp"); if (g) g.addEventListener("change", e => { S.bGrp = +e.target.value; renderExplore(false); });
+  const base = dist(vs[0], mask);
+  extra.innerHTML = (V[vs[0]].st ? `<p class="note">${esc(V[vs[0]].st)}</p>` : "") + baseText(base, S.xBy ? ` · showing <b>${esc(lab(S.xBy, S.bGrp))}</b>` : "") + tableBlock(tbl, `${V[vs[0]].bat}_battery.csv`);
+}
+
+/* ============================================================ PARTY LANDSCAPE */
+const PARTIES = [["Labour", "a"], ["National", "b"], ["Green", "c"], ["ACT", "d"], ["NZ First", "e"], ["Te Pāti Māori", "f"], ["TOP", "g"]];
+const VOTEGRP = [[1, "Labour"], [2, "National"], [3, "Green"], [4, "ACT"], [5, "NZ First"], [6, "Te Pāti Māori"], [7, "Another party"], [0, "Did not vote"]];
+function renderParties() {
+  const el = $("#v-parties"); const mask = filterMask(); const W = cardW(el);
+  // left-right map
+  const rows = PARTIES.map(([name, l]) => ({ name, all: meanOf("B5" + l, mask) }));
+  const self = VOTEGRP.slice(0, 6).map(([code, name]) => ({ name, m: meanOf("B6", andMask(mask, "mvpartyvote", code)) }));
+  const selfAll = meanOf("B6", mask);
+  const labW = 130, plotW = Math.max(260, W - labW - 30), rowH = 34, top = 30; const H = top + rows.length * rowH + 50; const x = v => labW + v / 10 * plotW;
+  let s = svgOpen(labW + plotW + 30, H);
+  for (let t = 0; t <= 10; t++) s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 10}" y2="${H - 34}"/><text class="muted" x="${x(t)}" y="${top - 14}" text-anchor="middle">${t}</text>`;
+  s += `<text class="muted" x="${x(0)}" y="${H - 8}">← Left</text><text class="muted" x="${x(10)}" y="${H - 8}" text-anchor="end">Right →</text><text class="muted" x="${x(5)}" y="${H - 8}" text-anchor="middle">Centre</text>`;
+  // all-respondent self placement band
+  if (selfAll.n) s += `<rect x="${x(selfAll.lo)}" y="${top - 8}" width="${x(selfAll.hi) - x(selfAll.lo)}" height="${H - top - 26}" fill="var(--ink)" opacity=".06"/><line x1="${x(selfAll.m)}" x2="${x(selfAll.m)}" y1="${top - 8}" y2="${H - 34}" stroke="var(--ink-2)" stroke-dasharray="4 3"/><text class="muted" x="${x(selfAll.m) + 4}" y="${H - 22}" font-size="11">Average voter ${selfAll.m.toFixed(1)}</text>`;
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2, c = partyColor(r.name) || css("--p-top"); const sv = self.find(z => z.name === r.name);
+    s += `<text class="ink" x="${labW - 12}" y="${y + 4}" text-anchor="end">${r.name}</text>`;
+    if (sv && sv.m.n >= SUP_N) {
+      const t = `<b>${r.name} voters</b> place themselves at <b>${sv.m.m.toFixed(2)}</b> (CI ${sv.m.lo.toFixed(2)}–${sv.m.hi.toFixed(2)}), n = ${fmtN(sv.m.n)}`;
+      s += `<g data-tip="${esc(t)}"><line x1="${x(Math.min(sv.m.m, r.all.m))}" x2="${x(Math.max(sv.m.m, r.all.m))}" y1="${y}" y2="${y}" stroke="${c}" stroke-opacity=".35" stroke-width="2"/><rect x="${x(sv.m.m) - 6}" y="${y - 6}" width="12" height="12" transform="rotate(45 ${x(sv.m.m)} ${y})" fill="var(--surface)" stroke="${c}" stroke-width="2.2"/></g>`;
+    }
+    const t = `<b>${r.name}</b> placed at <b>${r.all.m.toFixed(2)}</b> by all respondents (CI ${r.all.lo.toFixed(2)}–${r.all.hi.toFixed(2)}), n = ${fmtN(r.all.n)}`;
+    s += `<g data-tip="${esc(t)}"><rect x="${labW}" y="${y - rowH / 2}" width="${plotW}" height="${rowH}" fill="transparent"/><line x1="${x(r.all.lo)}" x2="${x(r.all.hi)}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="3"/><circle cx="${x(r.all.m)}" cy="${y}" r="7" fill="${c}" stroke="var(--surface)" stroke-width="2"/></g>`;
+  });
+  s += "</svg>";
+
+  // like/dislike matrices
+  const which = S.likeSet || "B1";
+  const items = which === "B1" ? PARTIES.map(([n, l]) => ["B1" + l, n]) : "abcdefghi".split("").map(l => ["B3" + l, V["B3" + l].t.replace(/^.*dislike\s+/i, "").replace(/\?$/, "")]);
+  const groups = VOTEGRP.map(([code, name]) => ({ name, mask: andMask(mask, "mvpartyvote", code) }));
+  const rowsH = [{ name: "All respondents", mask }, ...groups].map(g => {
+    let n = 0; for (let i = 0; i < N; i++) if (g.mask[i]) n++;
+    return { label: g.name, n, cells: items.map(([v, nm]) => { const m = meanOf(v, g.mask); return m.n < SUP_N ? { v: NaN } : { v: m.m, txt: m.m.toFixed(1), low: m.n < MIN_N, tip: `<b>${esc(g.name)}</b> rating of <b>${esc(nm)}</b><br>mean ${m.m.toFixed(2)} (CI ${m.lo.toFixed(1)}–${m.hi.toFixed(1)}), n = ${m.n}` }; }) };
+  });
+  // B4 preferred PM by vote
+  el.innerHTML = `${filterNote()}
+  <div class="card"><h2>Where voters place the parties on the left–right scale</h2>
+    <p class="sub">● Mean placement of each party by all respondents (B5, line = 95% CI). ◇ Mean self-placement (B6) of that party’s own validated voters. The shaded band is the average respondent’s self-placement. Gaps between ● and ◇ show how far voters see their party from themselves.</p>
+    <div class="chart">${s}</div>
+    <div class="legend"><span><i style="background:var(--ink-2);border-radius:50%"></i>Party as placed by all respondents</span><span><i style="border:2px solid var(--ink-2);background:none;transform:rotate(45deg);width:9px;height:9px"></i>Self-placement of the party’s voters</span></div>
+  </div>
+  <div class="card"><h2>How much each party’s voters like the ${which === "B1" ? "parties" : "leaders"}</h2>
+    <p class="sub">Mean rating on a 0 (strongly dislike) to 10 (strongly like) scale, by validated 2023 party vote. Italic cells rest on fewer than ${MIN_N} respondents.</p>
+    <div class="controls"><span class="seg"><button data-like="B1" aria-pressed="${which === "B1"}">Parties (B1)</button><button data-like="B3" aria-pressed="${which === "B3"}">Leaders (B3)</button></span></div>
+    ${heatTable(items.map(i => i[1]), rowsH, { lo: 0, hi: 10, corner: "Voted for ↓  /  rating of →", nCol: true })}
+  </div>`;
+  el.querySelectorAll("[data-like]").forEach(b => b.addEventListener("click", () => { S.likeSet = b.dataset.like; renderParties(); }));
+}
+
+/* ============================================================ FLOWS */
+function renderFlows() {
+  const el = $("#v-flows"); const mask = filterMask(); const W = cardW(el);
+  const panelOnly = !!S.panelOnly; const m0 = panelOnly ? andMask(mask, "msample", 5) : mask;
+  const L = [[1, "Labour"], [2, "National"], [3, "Green"], [4, "ACT"], [5, "NZ First"], [6, "Te Pāti Māori"], [7, "Another party"], [0, "Did not vote"]];
+  const a = COL.mppartyvote, b = COL.mvpartyvote, w = weightVec();
+  const M = L.map(() => L.map(() => 0)), Mn = L.map(() => L.map(() => 0)); const idx = new Map(L.map(([c], i) => [c, i]));
+  let T = 0, n = 0;
+  for (let i = 0; i < N; i++) { if (!m0[i]) continue; const r = idx.get(a[i]), c = idx.get(b[i]); if (r === undefined || c === undefined) continue; M[r][c] += w[i]; Mn[r][c]++; T += w[i]; n++; }
+  const rs = M.map(r => r.reduce((x, y) => x + y, 0)), cs = L.map((_, j) => M.reduce((x, r) => x + r[j], 0));
+  // sankey
+  const H = 460, nodeW = 14, gap = 8, left = 120, right = Math.max(left + 300, W - 120);
+  const scale = (H - 30 - gap * (L.length - 1)) / T;
+  const ly = [], ry = []; let y = 10; rs.forEach((v, i) => { ly[i] = y; y += v * scale + gap; }); y = 10; cs.forEach((v, j) => { ry[j] = y; y += v * scale + gap; });
+  const lo = ly.slice(), ro = ry.slice();
+  let s = svgOpen(right + 120, H);
+  L.forEach(([, name], i) => L.forEach(([, n2], j) => {
+    const v = M[i][j]; if (v <= 0) return; const h = v * scale; const y0 = lo[i] + h / 2, y1 = ro[j] + h / 2; lo[i] += h; ro[j] += h;
+    const c = partyColor(name) || css("--p-oth"); const mx = (left + nodeW + right) / 2;
+    const t = `<b>${name} 2020 → ${n2} 2023</b><br>${fmtP(v / rs[i], 1)} of ${name} 2020 voters<br>${fmtP(v / T, 1)} of all · n = ${Mn[i][j]}`;
+    s += `<path data-tip="${esc(t)}" d="M${left + nodeW},${y0} C${mx},${y0} ${mx},${y1} ${right},${y1}" stroke="${c}" stroke-opacity="${i === j ? .5 : .28}" stroke-width="${Math.max(1, h)}" fill="none"/>`;
+  }));
+  L.forEach(([, name], i) => {
+    const c = partyColor(name) || css("--p-oth");
+    if (rs[i] > 0) s += `<rect x="${left}" y="${ly[i]}" width="${nodeW}" height="${rs[i] * scale}" fill="${c}"/><text class="ink" x="${left - 8}" y="${ly[i] + rs[i] * scale / 2 + 4}" text-anchor="end">${name} <tspan class="muted">${fmtP(rs[i] / T)}</tspan></text>`;
+    if (cs[i] > 0) s += `<rect x="${right}" y="${ry[i]}" width="${nodeW}" height="${cs[i] * scale}" fill="${c}"/><text class="ink" x="${right + nodeW + 8}" y="${ry[i] + cs[i] * scale / 2 + 4}">${name} <tspan class="muted">${fmtP(cs[i] / T)}</tspan></text>`;
+  });
+  s += `<text class="muted" x="${left}" y="${H - 2}" font-size="11">2020 (recalled, E16)</text><text class="muted" x="${right + nodeW}" y="${H - 2}" text-anchor="end" font-size="11">2023 (validated)</text></svg>`;
+  // retention table
+  const rowsH = L.map(([, name], i) => ({ label: name + " 2020", n: Mn[i].reduce((x, y) => x + y, 0), cells: L.map(([, n2], j) => { const p = rs[i] ? M[i][j] / rs[i] : NaN; return { v: p, txt: fmtP(p), low: Mn[i].reduce((x, y) => x + y, 0) < MIN_N, tip: `${name} 2020 → ${n2} 2023: ${fmtP(p, 1)}` }; }) }));
+  // split ticket
+  const pv = COL.mvpartyvote, ev = COL.mvelecvote; const L2 = L.slice(0, 7); const SM = L2.map(() => L2.map(() => 0)); const SN = L2.map(() => 0);
+  for (let i = 0; i < N; i++) { if (!mask[i]) continue; const r = idx.get(pv[i]), c = idx.get(ev[i]); if (r === undefined || c === undefined || r > 6 || c > 6) continue; SM[r][c] += w[i]; SN[r]++; }
+  const splitRows = L2.map(([, name], i) => { const t = SM[i].reduce((x, y) => x + y, 0); return { label: name, n: SN[i], cells: L2.map(([, n2], j) => ({ v: t ? SM[i][j] / t : NaN, txt: t ? fmtP(SM[i][j] / t) : "—", low: SN[i] < MIN_N, tip: `${name} party voters giving their electorate vote to ${n2}: ${fmtP(SM[i][j] / t, 1)}` })) }; });
+  let tot = 0, straight = 0; SM.forEach((r, i) => r.forEach((x, j) => { tot += x; if (i === j) straight += x; }));
+  el.innerHTML = `${filterNote()}
+  <div class="card"><h2>From 2020 to 2023: how votes moved</h2>
+    <p class="sub">Flows from recalled 2020 party vote to validated 2023 party vote (weighted, n = ${fmtN(n)}). Recalled vote tends to over-state support for the previous winner (here Labour), so treat 2020 sizes as approximate. Hover a ribbon for detail.</p>
+    <div class="controls"><label><input type="checkbox" id="panelOnly" ${panelOnly ? "checked" : ""}> 2020 panel members only (recall checked against their 2020 interview is not in this release)</label></div>
+    <div class="chart">${s}</div>
+    <h3>Where each party’s 2020 voters went (row %)</h3>
+    ${heatTable(L.map(l => l[1]), rowsH, { lo: 0, hi: 1, corner: "2020 ↓  /  2023 →", nCol: true })}
+  </div>
+  <div class="card"><h2>Split-ticket voting under MMP</h2>
+    <p class="sub">Of each party’s validated party voters, the share giving their electorate vote to each party’s candidate. Overall, <b>${fmtP(straight / tot)}</b> voted for the same party with both votes.</p>
+    ${heatTable(L2.map(l => l[1]), splitRows, { lo: 0, hi: 1, corner: "Party vote ↓  /  electorate vote →", nCol: true })}
+  </div>`;
+  $("#panelOnly").addEventListener("change", e => { S.panelOnly = e.target.checked; renderFlows(); });
+}
+
+/* ============================================================ WHO VOTED FOR WHOM */
+const GROUPVARS = ["ageband", "mgender", "methnic", "mmaori", "meducate", "H30", "oesch5_moesch5", "H22", "mreldom", "murbrur", "mauckland", "maoriel_23w", "B6grp", "H20"];
+function renderGroups() {
+  const el = $("#v-groups"); const mask = filterMask(); const W = cardW(el);
+  const inclNon = !!S.gNon; const target = "mvpartyvote";
+  const colors = colorsFor(target, dist(target, mask, { dk: false }).cats);
+  const reorder = cats => { const order = inclNon ? [2, 1, 3, 4, 5, 6, 7, 0] : [2, 1, 3, 4, 5, 6, 7]; const m = new Map(cats.map(c => [c.code, c])); const tot = order.reduce((a, c) => a + (m.get(c)?.sw || 0), 0); return order.map(c => m.get(c)).filter(Boolean).map(c => ({ ...c, p: c.sw / tot })); };
+  const allD = dist(target, mask, { dk: false });
+  let blocks = `<div class="card"><h2>Who voted for whom</h2><p class="sub">Validated 2023 party vote within each group${inclNon ? ", including non-voters" : " (voters only)"}. Numbers in bars are percentages; the right-hand figure is the group’s unweighted n (* = under ${MIN_N}).</p>
+  <div class="controls"><label><input type="checkbox" id="gNon" ${inclNon ? "checked" : ""}> Include non-voters</label></div>
+  ${legendHTML(reorder(allD.cats), colors)}
+  ${stacked([{ label: "All", n: allD.n, bold: true, segs: reorder(allD.cats) }], colors, { width: W, labW: 240 })}`;
+  const csv = [["Variable", "Group", ...reorder(allD.cats).map(c => c.label), "n"]];
+  GROUPVARS.filter(g => V[g]).forEach(g => {
+    const gs = groupsOf(g, mask).map(x => { const d = dist(target, x.mask, { dk: false }); const segs = reorder(d.cats); const n = segs.reduce((a, c) => a + c.n, 0); csv.push([V[g].t, x.label, ...segs.map(c => (c.p * 100).toFixed(1)), n]); return { label: x.label, n, segs }; });
+    blocks += `<h3>${esc(V[g].t)}</h3>` + stacked(gs, colors, { width: W, labW: 240, rowH: 28 });
+  });
+  el.innerHTML = filterNote() + blocks + `<div class="tbtns"><button class="iconbtn" id="gcsv">Download all as CSV</button></div></div>`;
+  $("#gNon").addEventListener("change", e => { S.gNon = e.target.checked; renderGroups(); });
+  $("#gcsv").addEventListener("click", () => csvDownload("party_vote_by_group.csv", csv));
+}
+
+/* ============================================================ ISSUES */
+const ISSUE_FLAGS = ["minflation", "meconomy", "mtax", "mhousing", "mhealth", "meducation", "mcrime", "mclimate", "menvironment", "mequality", "mwelfare", "mwages", "mdebt", "mchange", "mtiriti", "mimmigration", "mtrust", "mstable", "mtransport", "mfarming", "mpension", "mcovid", "mfreedom", "mrights", "mwomen", "mabortion", "mforeign", "mpeople"];
+function renderIssues() {
+  const el = $("#v-issues"); const mask = filterMask(); const W = cardW(el); const W2 = cardW(el, true);
+  const d = dist("mllcat", mask, { dk: true }); const cats = d.cats.filter(c => c.n > 0).sort((a, b) => b.p - a.p);
+  const bars = hBars(cats.map(c => ({ label: c.label, p: c.p, lo: c.lo, hi: c.hi, n: c.n, color: css("--accent") })), { width: W2, labW: 150 });
+  // by party: share of party's voters naming each category
+  const P = [[2, "National"], [1, "Labour"], [3, "Green"], [4, "ACT"], [5, "NZ First"], [6, "Te Pāti Māori"], [0, "Did not vote"]];
+  const pd = P.map(([c, n]) => ({ n, d: dist("mllcat", andMask(mask, "mvpartyvote", c), { dk: true }) }));
+  const heat = cats.map(c => ({ label: c.label, n: c.n, cells: pd.map(x => { const k = x.d.cats.find(z => z.code === c.code); return { v: k.p, txt: fmtP(k.p), low: x.d.n < MIN_N, tip: `${esc(x.n)} voters naming <b>${esc(c.label)}</b>: ${fmtP(k.p, 1)} (CI ${fmtP(k.lo)}–${fmtP(k.hi)})` }; }) }));
+  const hmax = Math.max(...heat.flatMap(r => r.cells.map(c => c.v)));
+  // issue ownership: C3 by mllcat
+  const C3c = colorsFor("C3", dist("C3", mask).cats);
+  const own = cats.filter(c => c.n >= MIN_N).map(c => { const dd = dist("C3", andMask(mask, "mllcat", c.code)); return { label: c.label, n: dd.n, segs: dd.cats }; });
+  // text-search flags
+  const flags = ISSUE_FLAGS.filter(f => V[f]).map(f => { const dd = dist(f, mask, { dk: false }); const k = dd.cats.find(z => z.code === 1); return { label: V[f].t.replace(/^Issues Text Search for /i, ""), p: k.p, lo: k.lo, hi: k.hi, n: dd.n, color: css("--cat-2") }; }).sort((a, b) => b.p - a.p);
+  el.innerHTML = `${filterNote()}
+  <div class="grid2">
+  <div class="card"><h2>Most important issue (LLM-coded)</h2><p class="sub">Answers to the open question C2 (“the single most important issue for you in the 2023 election”), classified by a large language model into 16 categories (mllcat).</p><div class="chart">${bars}</div>${baseText(d)}</div>
+  <div class="card"><h2>Most important issue (keyword search)</h2><p class="sub">The same answers coded by keyword search. Answers can match several topics, so shares add to more than 100%. Comparing the two codings shows how sensitive salience is to the method.</p><div class="chart">${hBars(flags, { width: W2, labW: 170 })}</div></div>
+  </div>
+  <div class="card"><h2>Issue agendas of each party’s voters</h2><p class="sub">Share of each party’s validated voters whose most important issue falls in each LLM category (column %).</p>
+  ${heatTable(pd.map(x => x.n), heat, { lo: 0, hi: hmax, corner: "Issue ↓  /  voters of →" })}</div>
+  <div class="card"><h2>Issue ownership</h2><p class="sub">Among people naming each issue, which party they think would be best at dealing with it (C3). Issues named by fewer than ${MIN_N} respondents are omitted.</p>
+  ${legendHTML(dist("C3", mask).cats, C3c)}${stacked(own, C3c, { width: W, labW: 170 })}</div>`;
+}
+
+/* ============================================================ METHODS */
+function renderMethods() {
+  $("#v-methods").innerHTML = `<div class="card methods"><h2>Methods & caveats</h2>
+  <h3>Source</h3><p>${esc(NZES.meta.source)}. New Zealand Election Study, 2023. Sample drawn from the electoral roll; self-completion by post with an online option. The release includes an oversample of people of Māori descent, younger people, and ${fmtN(902)} respondents re-interviewed from the 2020 study. Questions D2 and D3 were not released.</p>
+  <h3>Weights</h3><ul>
+  <li><b>vwgt</b> (default) adjusts for gender, age, Māori/non-Māori descent, education, Auckland/not Auckland, and validated vote or non-vote. Use it for almost everything.</li>
+  <li><b>bwgt</b> adjusts for gender, age and Māori descent only — useful to see how much the vote calibration moves an estimate.</li>
+  <li><b>mwgt</b> scales the Māori-descent subsample to its actual size and gives everyone else zero weight; use it for analysis of Māori respondents on their own.</li></ul>
+  <h3>Uncertainty</h3><p>Weighting reduces the information in the sample. Every estimate uses Kish’s effective sample size, n<sub>eff</sub> = (Σw)²/Σw², computed for that estimate’s base. Proportions get Wilson 95% intervals using n<sub>eff</sub>; means use a linearised standard error. Tests of association are Pearson χ² scaled by n<sub>eff</sub> (a first-order design correction), with Cramér’s V as effect size. The release has no strata or cluster identifiers, so these are approximate but far better than treating the data as a simple random sample.</p>
+  <h3>Small groups</h3><p>Groups with fewer than ${MIN_N} respondents are marked with * and drawn faded; under ${SUP_N} they are suppressed. Pasifika respondents (n ≈ 31) and individual electorates are too small for reliable estimates and electorates are not included here.</p>
+  <h3>Missing and non-substantive answers</h3><p>Codes labelled “Don’t know”, “Missing”, “Unclassified”, “Unknown” and similar, plus any code without a label in the release (e.g. 0 on A5), are treated as non-substantive and excluded unless you tick <i>Show “Don’t know”</i>. On 0–10 scales, 0 is a real answer and 99 is “Don’t know”. For tick-box questions, “not selected” is a valid answer.</p>
+  <h3>Recalled vote</h3><p>2020 party vote is self-reported in 2023 (E16 / mppartyvote). Recall is known to drift towards the previous winner and towards current preferences, so vote-switching estimates are indicative.</p>
+  <h3>Text answers and privacy</h3><p>Free-text answers, occupation text, city, electorate and identifiers were deliberately left out of this file. The underlying data are licensed through the data archive; do not redistribute this HTML file (it contains respondent-level data) beyond the terms of that licence.</p>
+  <h3>Rebuilding</h3><p>This page is generated by <code>build.py</code> from the release <code>.dta</code> file and the questionnaire PDF.</p></div>`;
+}
+
+/* ============================================================ boot */
+const startTab = readHash();
+go(startTab, false);
+addEventListener("hashchange", () => { const t = readHash(); go(t, false); });
+</script>
+</body>
+</html>
