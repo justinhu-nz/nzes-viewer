@@ -1,5 +1,0 @@
-1_2023 NZESQuestionnaire_100227.pdf (application/pdf) 207137 bytes.
-1_CodebookNZES2023_100227.pdf (application/pdf) 98075 bytes.
-1_NZES2023Readme_100227.pdf (application/pdf) 70583 bytes.
-2_NZES23Release_100227.dta (application/x-stata-14) 5686233 bytes.
-2_NZES23Release_100227.sav (application/x-spss-sav) 4502246 bytes.
