@@ -128,6 +128,21 @@ table.data tr.total td{font-weight:600}
 .methods p,.methods li{max-width:85ch}
 .methods h3{margin-top:18px}
 .empty{color:var(--muted);padding:30px 0;text-align:center}
+.stories{max-width:940px;margin:0 auto}
+.stories .intro h2{font-size:20px}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.toc a{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink-2);background:var(--surface-2);border-radius:99px;padding:5px 12px 5px 6px;font-size:12.5px}
+.toc a:hover{background:var(--accent-wash);color:var(--accent)}
+.toc a span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--surface);font-weight:650;font-size:11px}
+.story{padding:24px 26px 20px;scroll-margin-top:80px}
+.story .kicker{font-size:11.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.story h2{font-size:21px;line-height:1.25;letter-spacing:-.015em;margin:0 0 10px;max-width:34ch}
+.story .dek{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0 0 14px;max-width:72ch}
+.story .dek b{color:var(--ink);font-weight:650}
+.story h3{font-size:13px;color:var(--ink-2);font-weight:600;margin:16px 0 6px}
+.slinks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:13px}
+.slinks a{text-decoration:none}.slinks a:hover{text-decoration:underline}
+@media (max-width:640px){.story{padding:16px}.story h2{font-size:18px}}
 .flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 @media (max-width:640px){main{padding:12px}.bar{padding:8px 12px}.card{padding:14px}}
 </style>
@@ -148,13 +163,14 @@ table.data tr.total td{font-weight:600}
       <label title="Restrict every view to one subgroup">Filter
         <select id="gFilterVar"><option value="">Everyone</option></select>
         <select id="gFilterVal" hidden></select></label>
-      <label title="Include 'Don't know' and other non-substantive answers"><input type="checkbox" id="gDK"> Show “Don’t know”</label>
+      <label title="Count ‘Don’t know’ answers in the base (blank / missing codes are always left out)"><input type="checkbox" id="gDK" checked> Show “Don’t know”</label>
       <button class="iconbtn" id="themeBtn" title="Toggle light/dark" aria-label="Toggle light/dark"><svg width="16" height="16" viewBox="0 0 16 16" style="display:block"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg></button>
     </div>
   </div>
 </header>
 <main>
   <section class="view" id="v-overview"></section>
+  <section class="view" id="v-stories"></section>
   <section class="view" id="v-explore">
     <div class="layout">
       <aside class="side">
@@ -186,7 +202,7 @@ for (const [k, arr] of Object.entries(NZES.cols)) {
 const WTS = {}; for (const [k, arr] of Object.entries(NZES.w)) WTS[k] = Float64Array.from(arr);
 WTS.none = new Float64Array(N).fill(1);
 
-const S = { weight: "vwgt", dk: false, fVar: "", fVal: null, tab: "overview", xVar: "mvpartyvote", xBy: "", xView: "dist" };
+const S = { weight: "vwgt", dk: true, fVar: "", fVal: null, tab: "overview", xVar: "mvpartyvote", xBy: "", xView: "dist" };
 
 /* ============================================================ helpers */
 const $ = s => document.querySelector(s);
@@ -204,6 +220,13 @@ function codesOf(v) {
 }
 const lab = (v, c) => V[v].lab[c] ?? String(c);
 const substantive = (v, c) => !V[v].miss.has(c);
+const _dkUsed = {};
+/* a genuine “Don’t know” answer (as opposed to a blank, “Missing”, unlabelled or unclassified code) that at least one respondent gave */
+const isDK = (v, c) => {
+  if (!(V[v].miss.has(c) && /don.?t know|^dk$/i.test(lab(v, c)))) return false;
+  const k = v + ":" + c; if (!(k in _dkUsed)) { const col = COL[v]; let u = false; for (let i = 0; i < N; i++) if (col[i] === c) { u = true; break; } _dkUsed[k] = u; }
+  return _dkUsed[k];
+};
 const titleOf = v => { const m = V[v]; if (m.k === "multi" && m.tr && m.lab[1] && m.lab[1].length > 12) return m.lab[1]; return m.it && (m.tr || m.it.length >= 40) ? m.it : m.t; };
 const MIN_N = 30, SUP_N = 10;
 
@@ -226,7 +249,7 @@ function wilson(p, n) {
 function dist(v, mask, opt = {}) {
   const col = COL[v], w = weightVec(), meta = V[v];
   const incl = opt.dk ?? S.dk;
-  const codes = codesOf(v).filter(c => incl || substantive(v, c));
+  const codes = codesOf(v).filter(c => substantive(v, c) || (incl && isDK(v, c)));
   const idx = new Map(codes.map((c, i) => [c, i]));
   const sw = new Float64Array(codes.length), n = new Float64Array(codes.length);
   let SW = 0, SW2 = 0, NN = 0;
@@ -414,11 +437,11 @@ function csvDownload(name, rows) {
 function baseText(d, extra = "") {
   const wn = { vwgt: "vote-validated weight (vwgt)", bwgt: "demographic weight (bwgt)", mwgt: "Māori-subsample weight (mwgt)", none: "no weight" }[S.weight];
   const f = S.fVar ? ` · filtered to <b>${esc(V[S.fVar].t)} = ${esc(lab(S.fVar, S.fVal))}</b>` : "";
-  return `<div class="basebar">Base: <b>${fmtN(d.n)}</b> respondents with a ${S.dk ? "" : "substantive "}answer · effective n ≈ <b>${fmtN(d.neff)}</b> · ${wn}${f}${extra}. Bars show 95% confidence intervals; * = fewer than ${MIN_N} respondents.</div>`;
+  return `<div class="basebar">Base: <b>${fmtN(d.n)}</b> respondents with ${S.dk ? "an answer (incl. “Don’t know”)" : "a substantive answer (“Don’t know” excluded)"} · effective n ≈ <b>${fmtN(d.neff)}</b> · ${wn}${f}${extra}. Bars show 95% confidence intervals; * = fewer than ${MIN_N} respondents.</div>`;
 }
 
 /* ============================================================ tabs & globals */
-const TABS = [["overview", "Overview"], ["explore", "Explorer"], ["parties", "Party landscape"], ["flows", "Vote flows"], ["groups", "Who voted for whom"], ["issues", "Issues"], ["methods", "Methods"]];
+const TABS = [["overview", "Overview"], ["stories", "Stories"], ["explore", "Explorer"], ["parties", "Party landscape"], ["flows", "Vote flows"], ["groups", "Who voted for whom"], ["issues", "Issues"], ["methods", "Methods"]];
 $("#tabs").innerHTML = TABS.map(([k, t]) => `<button role="tab" data-tab="${k}">${t}</button>`).join("");
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) go(b.dataset.tab); });
 function go(tab, push = true) {
@@ -455,14 +478,14 @@ try { const t = localStorage.getItem("nzes-theme"); if (t) document.documentElem
 addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(render, 150); });
 
 function writeHash() {
-  const p = new URLSearchParams(); p.set("tab", S.tab); if (S.weight !== "vwgt") p.set("w", S.weight); if (S.dk) p.set("dk", "1");
+  const p = new URLSearchParams(); p.set("tab", S.tab); if (S.weight !== "vwgt") p.set("w", S.weight); if (!S.dk) p.set("dk", "0");
   if (S.fVar) { p.set("f", S.fVar); p.set("fv", S.fVal); }
   if (S.tab === "explore") { p.set("var", S.xVar); if (S.xBy) p.set("by", S.xBy); if (S.xView !== "dist") p.set("view", S.xView); }
   history.replaceState(null, "", "#" + p.toString());
 }
 function readHash() {
   const p = new URLSearchParams(location.hash.slice(1));
-  if (p.get("w") && WTS[p.get("w")]) S.weight = p.get("w"); S.dk = p.get("dk") === "1";
+  if (p.get("w") && WTS[p.get("w")]) S.weight = p.get("w"); S.dk = p.get("dk") !== "0";
   if (p.get("var") && V[p.get("var")]) S.xVar = p.get("var"); if (p.get("by") && V[p.get("by")]) S.xBy = p.get("by"); if (p.get("view")) S.xView = p.get("view");
   if (p.get("f") && V[p.get("f")]) { S.fVar = p.get("f"); S.fVal = +p.get("fv"); }
   $("#gWeight").value = S.weight; $("#gDK").checked = S.dk;
@@ -472,7 +495,7 @@ function readHash() {
 
 function render() {
   if (S.weight === "mwgt" && !S._mw) { S._mw = 1; }
-  ({ overview: renderOverview, explore: renderExplore, parties: renderParties, flows: renderFlows, groups: renderGroups, issues: renderIssues, methods: renderMethods })[S.tab]();
+  ({ overview: renderOverview, stories: renderStories, explore: renderExplore, parties: renderParties, flows: renderFlows, groups: renderGroups, issues: renderIssues, methods: renderMethods })[S.tab]();
 }
 function filterNote() {
   let s = "";
@@ -539,6 +562,7 @@ function renderOverview() {
         <li><a href="#" data-go="explore" data-var="C9a" data-by="mmaori">Co-governance, Māori vs non-Māori</a></li>
         <li><a href="#" data-go="explore" data-var="C12" data-view="battery" data-by="">Economic & Treaty opinion battery (C12)</a></li>
         <li><a href="#" data-go="explore" data-var="B4" data-by="ageband">Preferred PM by age group</a></li>
+        <li><a href="#" data-go="stories"><b>Ten stories from the data</b></a></li>
         <li><a href="#" data-go="parties">Where voters place the parties on left–right</a></li>
         <li><a href="#" data-go="flows">How 2020 voters moved in 2023</a></li>
       </ul>
@@ -840,6 +864,255 @@ function renderIssues() {
   ${legendHTML(dist("C3", mask).cats, C3c)}${stacked(own, C3c, { width: W, labW: 170 })}</div>`;
 }
 
+/* ============================================================ STORIES */
+/* Every number below is computed live from the embedded data. Stories always use the
+   vote-validated weight, the whole sample, and keep “Don’t know” in the base, so the
+   headlines don’t shift with the global settings. */
+function inStoryCtx(fn) {
+  const save = { w: S.weight, dk: S.dk, f: S.fVar, fv: S.fVal };
+  S.weight = "vwgt"; S.dk = true; S.fVar = ""; S.fVal = null;
+  try { return fn(); } finally { S.weight = save.w; S.dk = save.dk; S.fVar = save.f; S.fVal = save.fv; }
+}
+const ALL = () => { const m = new Uint8Array(N); const w = WTS.vwgt; for (let i = 0; i < N; i++) m[i] = w[i] > 0 ? 1 : 0; return m; };
+function maskWhere(base, pred) { const m = new Uint8Array(N); for (let i = 0; i < N; i++) m[i] = base[i] && pred(i) ? 1 : 0; return m; }
+/** weighted % of rows (within mask, with v in baseCodes) whose v is in codes */
+function pct(v, codes, baseCodes, mask) {
+  const col = COL[v], w = WTS.vwgt, cs = new Set(codes), bs = new Set(baseCodes); let T = 0, X = 0, T2 = 0, n = 0;
+  for (let i = 0; i < N; i++) { if (!mask[i]) continue; const x = col[i]; if (!bs.has(x)) continue; T += w[i]; T2 += w[i] * w[i]; n++; if (cs.has(x)) X += w[i]; }
+  const p = T ? X / T : NaN, neff = T2 ? T * T / T2 : 0; const [lo, hi] = wilson(p, neff); return { p, lo, hi, n, neff };
+}
+const VOTERS = [1, 2, 3, 4, 5, 6, 7];
+const PV = [[2, "National"], [1, "Labour"], [3, "Green"], [4, "ACT"], [5, "NZ First"], [6, "Te Pāti Māori"]];
+const R = p => Math.round(p * 100);
+const STORY_LINK = (label, v, by, view) => `<a href="#" class="slink" data-var="${v}" data-by="${by || ""}" data-view="${view || "dist"}">${esc(label)} →</a>`;
+
+/* ---------- extra chart primitives ---------- */
+function dumbbell(rows, o) {
+  const W = o.width, labW = Math.min(o.labW || 300, W * .45), rowH = o.rowH || 30, top = 26, plotW = W - labW - 46;
+  const H = top + rows.length * rowH + 6, x = p => labW + p * plotW;
+  let s = svgOpen(W, H);
+  [0, .25, .5, .75, 1].forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 8}" y2="${H - 4}"/><text class="muted" x="${x(t)}" y="14" text-anchor="middle">${t * 100}%</text>`);
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2;
+    if (r.section) { s += `<text class="ink" font-weight="650" x="0" y="${y + 4}" font-size="12">${esc(r.section)}</text>`; return; }
+    const L = wrapText(r.label, Math.floor(labW / 6.4)).slice(0, 2);
+    s += `<text class="ink" x="${labW - 12}" y="${y + (L.length > 1 ? -2 : 4)}" text-anchor="end" font-size="12">${L.map((l, k) => `<tspan x="${labW - 12}" dy="${k ? 13 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+    const a = r.a.p, b = r.b.p, lo = Math.min(a, b), hi = Math.max(a, b);
+    const tip = `<b>${esc(r.full || r.label)}</b><br>${esc(o.a.label)}: <b>${fmtP(a)}</b> (n=${r.a.n})<br>${esc(o.b.label)}: <b>${fmtP(b)}</b> (n=${r.b.n})<br>Gap: ${Math.abs(R(a) - R(b))} points`;
+    s += `<g data-tip="${esc(tip)}"><rect x="${labW}" y="${y - rowH / 2}" width="${plotW + 40}" height="${rowH}" fill="transparent"/>`;
+    s += `<line x1="${x(lo)}" x2="${x(hi)}" y1="${y}" y2="${y}" stroke="var(--axis)" stroke-width="3"/>`;
+    s += `<circle cx="${x(a)}" cy="${y}" r="6" fill="${o.a.color}" stroke="var(--surface)" stroke-width="2"/>`;
+    s += `<rect x="${x(b) - 5}" y="${y - 5}" width="10" height="10" transform="rotate(45 ${x(b)} ${y})" fill="${o.b.color}" stroke="var(--surface)" stroke-width="2"/>`;
+    const left = a <= b ? [a, o.a] : [b, o.b], right = a <= b ? [b, o.b] : [a, o.a];
+    s += `<text class="muted" x="${x(left[0]) - 10}" y="${y + 4}" text-anchor="end" font-size="11">${R(left[0])}</text><text class="muted" x="${x(right[0]) + 10}" y="${y + 4}" font-size="11">${R(right[0])}</text></g>`;
+  });
+  return s + "</svg>";
+}
+function diverging(rows, o) {
+  const W = o.width, labW = Math.min(o.labW || 170, W * .32), rowH = 30, top = 28, plotW = W - labW - 20, mid = labW + plotW * (o.split ?? .3);
+  const leftW = mid - labW - 4, rightW = labW + plotW - mid - 30, max = o.max || 1;
+  const H = top + rows.length * rowH + 6;
+  let s = svgOpen(W, H);
+  s += `<text class="muted" x="${mid - 6}" y="14" text-anchor="end" font-size="11.5">← ${esc(o.leftLabel)}</text><text class="muted" x="${mid + 6}" y="14" font-size="11.5">${esc(o.rightLabel)} →</text>`;
+  s += `<line class="axis" x1="${mid}" x2="${mid}" y1="${top - 6}" y2="${H - 2}"/>`;
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const lw = r.left.p / max * leftW * (o.leftScale || 1), rw = r.right.p / max * rightW;
+    const tip = `<b>${esc(r.label)}</b><br>${esc(o.leftLabel)}: <b>${fmtP(r.left.p)}</b><br>${esc(o.rightLabel)}: <b>${fmtP(r.right.p)}</b><br>n = ${fmtN(r.right.n)}`;
+    s += `<g data-tip="${esc(tip)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/><text class="ink" x="${labW - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${esc(r.label)}</text>`;
+    s += `<rect x="${mid - lw - 1}" y="${y + 6}" width="${Math.max(0, lw)}" height="${rowH - 12}" rx="3" fill="${r.leftColor || o.leftColor}"/>`;
+    s += `<rect x="${mid + 1}" y="${y + 6}" width="${Math.max(0, rw)}" height="${rowH - 12}" rx="3" fill="${r.rightColor || o.rightColor}"/>`;
+    s += `<text class="ink" x="${mid - lw - 6}" y="${y + rowH / 2 + 4}" text-anchor="end" font-size="11.5">${R(r.left.p)}%</text><text class="ink" x="${mid + rw + 6}" y="${y + rowH / 2 + 4}" font-size="11.5" font-weight="600">${R(r.right.p)}%</text></g>`;
+  });
+  return s + "</svg>";
+}
+function lineChart(xs, series, o) {
+  const W = o.width, padL = 40, padR = Math.min(230, W * .34), top = 14, H = o.height || 260, bottom = 28, plotW = W - padL - padR, plotH = H - top - bottom;
+  const max = o.max || 1, x = i => padL + i / (xs.length - 1) * plotW, y = p => top + plotH - p / max * plotH;
+  let s = svgOpen(W, H);
+  niceTicks(0, max, 4).forEach(t => s += `<line class="grid" x1="${padL}" x2="${padL + plotW}" y1="${y(t)}" y2="${y(t)}"/><text class="muted" x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${Math.round(t * 100)}%</text>`);
+  xs.forEach((l, i) => s += `<text class="muted" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(l)}</text>`);
+  // direct labels at right end, nudged apart
+  const maxCh = Math.floor((padR - 16) / 6.3);
+  const ends = series.map(sr => ({ sr, y: y(sr.values[sr.values.length - 1].p), lines: wrapText(sr.name, maxCh).slice(0, 2).length })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) { const need = ends[i - 1].lines * 13 + 9; if (ends[i].y - ends[i - 1].y < need) ends[i].y = ends[i - 1].y + need; }
+  series.forEach(sr => {
+    const pts = sr.values.map((v, i) => [x(i), y(v.p)]);
+    s += `<path d="M${pts.map(p => p.join(",")).join(" L")}" fill="none" stroke="${sr.color}" stroke-width="2.2"/>`;
+    sr.values.forEach((v, i) => s += `<g data-tip="${esc(`<b>${esc(sr.name)}</b><br>${esc(xs[i])}: <b>${fmtP(v.p)}</b> (CI ${fmtP(v.lo)}–${fmtP(v.hi)})<br>n = ${v.n}`)}"><circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="11" fill="transparent"/><circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="4.5" fill="${sr.color}" stroke="var(--surface)" stroke-width="2"/></g>`);
+  });
+  ends.forEach(e => { const L = wrapText(e.sr.name, Math.floor((padR - 16) / 6.3)).slice(0, 2); s += `<text x="${padL + plotW + 12}" y="${e.y + 4}" font-size="11.5" class="ink">${L.map((l, k) => `<tspan x="${padL + plotW + 12}" dy="${k ? 13 : 0}">${esc(l)}</tspan>`).join("")}</text>`; });
+  return s + "</svg>";
+}
+function pairBars(rows, o) { // solid bar a + outline bar b per row
+  const W = o.width, labW = 120, rowH = 40, top = 24, plotW = W - labW - 60, max = o.max || 1, x = p => labW + p / max * plotW;
+  const H = top + rows.length * rowH + 6; let s = svgOpen(W, H);
+  niceTicks(0, max, 5).forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top - 6}" y2="${H - 4}"/><text class="muted" x="${x(t)}" y="12" text-anchor="middle">${Math.round(t * 100)}%</text>`);
+  rows.forEach((r, i) => {
+    const y = top + i * rowH, c = r.color;
+    const tip = `<b>${esc(r.label)}</b><br>${esc(o.a)}: <b>${fmtP(r.a.p)}</b><br>${esc(o.b)}: <b>${fmtP(r.b.p)}</b>`;
+    s += `<g data-tip="${esc(tip)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/><text class="ink" x="${labW - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${esc(r.label)}</text>`;
+    s += `<rect x="${labW}" y="${y + 5}" width="${x(r.a.p) - labW}" height="13" rx="3" fill="${c}"/><rect x="${labW}" y="${y + 21}" width="${x(r.b.p) - labW}" height="12" rx="3" fill="none" stroke="${c}" stroke-width="1.6"/>`;
+    s += `<text class="ink" x="${x(r.a.p) + 6}" y="${y + 16}" font-size="11.5" font-weight="600">${R(r.a.p)}%</text><text class="muted" x="${x(r.b.p) + 6}" y="${y + 32}" font-size="11.5">${R(r.b.p)}%</text></g>`;
+  });
+  return s + "</svg>";
+}
+const legendItems = items => `<div class="legend">${items.map(([c, l, shape]) => `<span><i style="background:${shape === "outline" ? "none" : c};${shape === "outline" ? `border:1.6px solid ${c};` : ""}${shape === "dot" ? "border-radius:50%;" : ""}${shape === "diamond" ? "transform:rotate(45deg);width:9px;height:9px;" : ""}"></i>${esc(l)}</span>`).join("")}</div>`;
+
+/* ---------- the stories ---------- */
+const STORIES = [
+ { id: "generations", kicker: "Age", build(W) {
+   const m0 = ALL(), ages = [1, 2, 3, 4, 5], AL = ages.map(a => lab("ageband", a));
+   const byAge = ages.map(a => { const m = andMask(m0, "ageband", a); const d = dist("mvpartyvote", m, { dk: false }); const cats = d.cats.filter(c => c.code >= 1 && c.code <= 7); const t = cats.reduce((x, c) => x + c.sw, 0); const order = [2, 1, 3, 4, 5, 6, 7]; return { label: lab("ageband", a), n: cats.reduce((x, c) => x + c.n, 0), segs: order.map(o => cats.find(c => c.code === o)).map(c => ({ ...c, p: c.sw / t })) }; });
+   const colors = colorsFor("mvpartyvote", dist("mvpartyvote", m0, { dk: false }).cats);
+   const g = byAge[0].segs.find(c => c.code === 3).p, n = byAge[0].segs.find(c => c.code === 2).p, n60 = byAge[3].segs.find(c => c.code === 2).p, g60 = byAge[3].segs.find(c => c.code === 3).p;
+   const A = [1, 2, 3, 4, 5, 9];
+   const lines = [["C12i", "Māori should have more say in all government decisions", css("--cat-7")], ["C12d", "Treaty references should be removed from the law", css("--cat-2")], ["C6g", "There should be more bicycle lanes", css("--cat-3")]]
+     .map(([v, name, color]) => ({ name, color, values: ages.map(a => pct(v, [1, 2], A, andMask(m0, "ageband", a))) }));
+   const c12d = lines[1].values;
+   return { title: `Under-30s voted Green ahead of National. 60–74-year-olds gave National half their votes.`,
+     dek: `Age is the sharpest dividing line in the 2023 electorate. Among voters aged 18–29 the Greens won <b>${R(g)}%</b> and National <b>${R(n)}%</b>; among 60–74-year-olds National took <b>${R(n60)}%</b> and the Greens just <b>${R(g60)}%</b>. The same gradient runs through opinion: support for removing Treaty references from the law rises from <b>${R(c12d[0].p)}%</b> of under-30s to <b>${R(c12d[4].p)}%</b> of over-75s.`,
+     body: `<h3>Party vote by age group (validated voters)</h3>${legendHTML(byAge[0].segs, colors)}<div class="chart">${stacked(byAge, colors, { width: W, labW: 80 })}</div>
+       <h3>% who agree, by age group</h3><div class="chart">${lineChart(AL, lines, { width: W, max: .7 })}</div>`,
+     note: `Age groups contain 195–620 voters each. Opinion shares include “Don’t know” in the base.`,
+     links: [STORY_LINK("Party vote by age", "mvpartyvote", "ageband"), STORY_LINK("Treaty references by age", "C12d", "ageband"), STORY_LINK("Left–right self-placement by age", "B6", "ageband", "mean")] };
+ }},
+ { id: "property", kicker: "Housing", build(W) {
+   const m0 = ALL(); const age = COL.mage, ten = COL.H22;
+   const AG = [["18–44", a => a >= 18 && a <= 44], ["45–64", a => a >= 45 && a <= 64], ["65+", a => a >= 65]];
+   const TN = [["Owners", t => t === 1 || t === 2], ["Renters", t => t === 3 || t === 4 || t === 7]];
+   const colors = colorsFor("mvpartyvote", dist("mvpartyvote", m0, { dk: false }).cats); const order = [2, 1, 3, 4, 5, 6, 7];
+   const rows = [], natGap = [];
+   AG.forEach(([al, af]) => { const pair = []; TN.forEach(([tl, tf]) => {
+     const m = maskWhere(m0, i => af(age[i]) && tf(ten[i])); const d = dist("mvpartyvote", m, { dk: false }); const cats = d.cats.filter(c => c.code >= 1 && c.code <= 7); const t = cats.reduce((x, c) => x + c.sw, 0);
+     const segs = order.map(o => cats.find(c => c.code === o)).map(c => ({ ...c, p: c.sw / t })); pair.push(segs.find(s => s.code === 2).p);
+     rows.push({ label: `${al} · ${tl}`, n: cats.reduce((x, c) => x + c.n, 0), segs }); });
+     natGap.push(pair[0] - pair[1]); });
+   const mo = maskWhere(m0, i => TN[0][1](ten[i])), mr = maskWhere(m0, i => TN[1][1](ten[i]));
+   const no = pct("mvpartyvote", [2], VOTERS, mo).p, nr = pct("mvpartyvote", [2], VOTERS, mr).p;
+   return { title: `Homeowners voted National at roughly twice the rate of renters — at every age.`,
+     dek: `Overall, <b>${R(no)}%</b> of voters who own their home (with or without a mortgage) voted National, against <b>${R(nr)}%</b> of renters. This isn’t just young renters versus older owners: comparing people of the same age, the owner–renter gap in the National vote is <b>${natGap.map(x => R(x)).join(", ")}</b> points for 18–44, 45–64 and 65+. Renters’ votes went to Labour and the Greens instead.`,
+     body: `<h3>Party vote by age and housing tenure (validated voters)</h3>${legendHTML(rows[0].segs, colors)}<div class="chart">${stacked(rows, colors, { width: W, labW: 130 })}</div>`,
+     note: `Owners = own with or without a mortgage (H22 codes 1–2). Renters = private, group or Kāinga Ora/council rental (codes 3, 4, 7). People living with family or in temporary housing are left out. Renters aged 65+ number only about 58, so that row is the least precise.`,
+     links: [STORY_LINK("Party vote by housing", "mvpartyvote", "H22"), STORY_LINK("Housing as a Treaty/tax issue: capital gains tax by housing", "C12h", "H22")] };
+ }},
+ { id: "divides", kicker: "Values", build(W) {
+   const m0 = ALL(), L = andMask(m0, "mleftorright", 1), Rt = andMask(m0, "mleftorright", 2), A = [1, 2, 3, 4, 5, 9];
+   const items = NZES.vars.filter(v => v.k === "cat" && v.lab["1"] === "Strongly agree" && v.lab["5"] === "Strongly disagree")
+     .map(v => ({ v: v.n, label: titleOf(v.n), a: pct(v.n, [1, 2], A, L), b: pct(v.n, [1, 2], A, Rt) })).map(r => ({ ...r, gap: Math.abs(r.a.p - r.b.p) })).sort((x, y) => y.gap - x.gap);
+   const top = items.slice(0, 10), cons = items.slice(-6).reverse();
+   const short = s => s.length > 80 ? s.slice(0, 78) + "…" : s;
+   const rows = [{ section: "Most divisive" }, ...top.map(r => ({ ...r, full: r.label, label: short(r.label) })), { section: "Most agreed" }, ...cons.map(r => ({ ...r, full: r.label, label: short(r.label) }))];
+   const t0 = top[0], dem = items.find(r => r.v === "A8b");
+   const opts = { width: W, labW: Math.min(340, W * .45), a: { label: "Left bloc (Labour, Green, Te Pāti Māori voters)", color: partyColor("Labour") }, b: { label: "Right bloc (National, ACT, NZ First voters)", color: partyColor("National") } };
+   return { title: `What splits left from right: Māori influence, carbon, and inequality — not democracy itself.`,
+     dek: `Across all ${items.length} agree/disagree statements in the survey, the widest gap is on “${esc(t0.label)}”: <b>${R(t0.a.p)}%</b> of left-bloc voters agree versus <b>${R(t0.b.p)}%</b> on the right. Yet on the basics the blocs are indistinguishable — <b>${R(dem.a.p)}%</b> and <b>${R(dem.b.p)}%</b> agree democracy is always preferable to any other form of government, and they share the same mild populism about who should make decisions.`,
+     body: `${legendItems([[opts.a.color, opts.a.label, "dot"], [opts.b.color, opts.b.label, "diamond"]])}<div class="chart">${dumbbell(rows, opts)}</div>`,
+     note: `% who strongly or somewhat agree, with “Don’t know” in the base. Blocs are defined by validated 2023 party vote (mleftorright); non-voters and minor-party voters are excluded. The ranking is computed live across every agree/disagree item.`,
+     links: [STORY_LINK("Opinion battery C12", "C12a", "mleftorright", "battery"), STORY_LINK("Populism items G12", "G12a", "mleftorright", "battery")] };
+ }},
+ { id: "spending", kicker: "Economy", build(W) {
+   const m0 = ALL(), A = [1, 2, 3, 4, 5, 9];
+   const rows = "abcdefghi".split("").map(l => { const v = "C10" + l; return { v, label: V[v].it || titleOf(v), right: pct(v, [1, 2], A, m0), left: pct(v, [4, 5], A, m0) }; }).sort((a, b) => (b.right.p - b.left.p) - (a.right.p - a.left.p));
+   const cuts = rows.filter(r => r.left.p > r.right.p);
+   const tc = maskWhere(m0, i => COL.C12b[i] === 1 || COL.C12b[i] === 2);
+   const tcH = pct("C10a", [1, 2], A, tc), tcHl = pct("C10a", [4, 5], A, tc), tcE = pct("C10b", [1, 2], A, tc);
+   const h = rows.find(r => r.v === "C10a");
+   return { title: `Everyone wants more spending — even people who think tax cuts are the answer.`,
+     dek: `<b>${R(h.right.p)}%</b> want more public spending on health and just <b>${R(h.left.p)}%</b> want less. More people want spending raised than cut in ${rows.length - cuts.length} of ${rows.length} areas; the exception${cuts.length === 1 ? " is" : "s are"} <b>${cuts.map(c => c.label.toLowerCase()).join(", ")}</b>. Among people who agree that reducing everyone’s taxes would solve our economic problems, <b>${R(tcH.p)}%</b> still want more health spending (only ${R(tcHl.p)}% want less) and <b>${R(tcE.p)}%</b> want more for education.`,
+     body: `<h3>Should there be more or less public expenditure on…</h3><div class="chart">${diverging(rows, { width: W, leftLabel: "Less / much less", rightLabel: "More / much more", leftColor: css("--div-p2"), rightColor: css("--div-n2"), split: .32 })}</div>`,
+     note: `The questionnaire warned that more spending “could require a tax increase”. “Same as now” and “Don’t know” make up the remainder of each row. Tax-cut believers: agree with C12b (n = ${tcH.n}).`,
+     links: [STORY_LINK("All spending items (C10)", "C10a", "mvpartyvote", "battery"), STORY_LINK("Tax cuts by party", "C12b", "mvpartyvote")] };
+ }},
+ { id: "leaders", kicker: "Leaders", build(W) {
+   const m0 = ALL(), A = [1, 2, 3, 4, 9];
+   const groups = [["All respondents", m0], ...PV.slice(0, 5).map(([c, nm]) => [nm + " voters", andMask(m0, "mvpartyvote", c)])];
+   const mk = (comp, trust) => groups.map(([label, m]) => ({ label, a: pct(comp, [1, 2], A, m), b: pct(trust, [1, 2], A, m) }));
+   const lux = mk("B7a", "B7c"), hip = mk("B7b", "B7d");
+   const W2 = W >= 700 ? Math.floor((W - 24) / 2) : W;
+   const opts = { width: W2, labW: 120, a: { label: "“A competent leader”", color: css("--cat-1") }, b: { label: "“A trustworthy leader”", color: css("--cat-2") } };
+   const nzfL = lux[5];
+   return { title: `Luxon won the election with a trust deficit; Hipkins lost with a trust surplus.`,
+     dek: `Voters rated the two main leaders as equally competent — <b>${R(lux[0].a.p)}%</b> said “competent” describes Christopher Luxon well, <b>${R(hip[0].a.p)}%</b> Chris Hipkins. But only <b>${R(lux[0].b.p)}%</b> called Luxon trustworthy, against <b>${R(hip[0].b.p)}%</b> for Hipkins. Even among NZ First voters, whose party joined Luxon’s government, ${R(nzfL.a.p)}% saw him as competent but just ${R(nzfL.b.p)}% as trustworthy.`,
+     body: `${legendItems([[opts.a.color, opts.a.label, "dot"], [opts.b.color, opts.b.label, "diamond"]])}<div style="display:flex;gap:24px;flex-wrap:wrap"><div class="chart" style="flex:1 1 ${Math.round(W2)}px"><h3>Christopher Luxon</h3>${dumbbell(lux, opts)}</div><div class="chart" style="flex:1 1 ${Math.round(W2)}px"><h3>Chris Hipkins</h3>${dumbbell(hip, opts)}</div></div>`,
+     note: `% saying the trait describes the leader “very well” or “fairly well” (B7), “Don’t know” in the base. Asked after the election, so answers may already reflect the result.`,
+     links: [STORY_LINK("Luxon trustworthy, by party", "B7c", "mvpartyvote"), STORY_LINK("Preferred PM, by age", "B4", "ageband")] };
+ }},
+ { id: "late", kicker: "Campaign", build(W) {
+   const m0 = ALL(), A = [1, 2, 3, 4, 5, 6, 9];
+   const rows = [...PV, [7, "Another party"]].map(([c, nm]) => ({ label: nm, ...pct("E7a", [4, 5], A, andMask(m0, "mvpartyvote", c)), color: partyColor(nm) })).sort((a, b) => b.p - a.p);
+   const all = pct("E7a", [4, 5], A, maskWhere(m0, i => COL.mvpartyvote[i] >= 1 && COL.mvpartyvote[i] <= 7));
+   const nzf = rows.find(r => r.label === "NZ First"), nat = rows.find(r => r.label === "National"), oth = rows.find(r => r.label === "Another party");
+   return { title: `NZ First’s comeback was decided in the final week.`,
+     dek: `<b>${R(nzf.p)}%</b> of NZ First voters made their choice in the last week of the campaign or on election day itself, compared with <b>${R(nat.p)}%</b> of National voters and ${R(all.p)}% of all voters. Only voters for the minor parties (${R(oth.p)}%) were as late. National and Labour leaned on voters who had decided “a long time ago”.`,
+     body: `<h3>% of each party’s voters who decided in the last week or on election day</h3><div class="chart">${hBars(rows, { width: W, labW: 130 })}</div>`,
+     note: `E7a, validated voters, “Don’t know” in the base. NZ First has about 100 voters in the sample (effective n ≈ ${Math.round(nzf.neff)}), so its interval is wide — but it clearly sits above National.`,
+     links: [STORY_LINK("When voters decided, by party", "E7a", "mvpartyvote")] };
+ }},
+ { id: "covid", kicker: "COVID-19", build(W) {
+   const m0 = ALL();
+   const vax = [...PV, [7, "Another party"]].map(([c, nm]) => ({ label: nm, ...pct("H27", [0], [0, 1, 2, 3, 4, 5], andMask(m0, "mvpartyvote", c)), color: partyColor(nm) })).sort((a, b) => b.p - a.p);
+   const doses = [[[0], "Not vaccinated"], [[1], "1 dose"], [[2], "2 doses"], [[3], "3 doses"], [[4, 5], "4+ doses"]];
+   const sci = doses.map(([cs, l]) => ({ label: l, ...pct("A11d", [1, 2], [1, 2, 3, 4, 9], maskWhere(m0, i => cs.includes(COL.H27[i]))), color: css("--cat-3") }));
+   const nzf = vax.find(r => r.label === "NZ First"), lab_ = vax.find(r => r.label === "Labour"), grn = vax.find(r => r.label === "Green");
+   const W2 = W >= 700 ? Math.floor((W - 24) / 2) : W;
+   return { title: `The pandemic’s political legacy: a quarter of NZ First voters were unvaccinated.`,
+     dek: `<b>${R(nzf.p)}%</b> of NZ First voters said they had not had a COVID-19 vaccine, compared with ${(lab_.p * 100).toFixed(1)}% of Labour and ${(grn.p * 100).toFixed(1)}% of Green voters. Vaccination status also tracks trust in science: <b>${R(sci[0].p)}%</b> of unvaccinated people trust scientists at least somewhat, against <b>${R(sci[4].p)}%</b> of those with four or more doses.`,
+     body: `<div style="display:flex;gap:24px;flex-wrap:wrap"><div class="chart" style="flex:1 1 ${Math.round(W2)}px"><h3>% unvaccinated, by party vote</h3>${hBars(vax, { width: W2, labW: 110 })}</div><div class="chart" style="flex:1 1 ${Math.round(W2)}px"><h3>% who trust scientists, by doses received</h3>${hBars(sci, { width: W2, labW: 110 })}</div></div>`,
+     note: `H27 and A11d. ${fmtN(pct("H27", [0], [0, 1, 2, 3, 4, 5], m0).n)} people answered the vaccination question; the unvaccinated group is small (n ≈ ${sci[0].n}). This shows association, not cause.`,
+     links: [STORY_LINK("Feelings about the COVID response, by party", "C4c1", "mvpartyvote", "battery"), STORY_LINK("Trust in scientists, by party", "A11d", "mvpartyvote")] };
+ }},
+ { id: "ardern", kicker: "Feelings", build(W) {
+   const m0 = ALL();
+   const rows = [...PV].map(([c, nm]) => { const m = andMask(m0, "mvpartyvote", c); return { label: nm, left: pct("C4b2", [1], [0, 1], m), right: pct("C4b9", [1], [0, 1], m) }; }).sort((a, b) => (b.right.p - b.left.p) - (a.right.p - a.left.p));
+   const all = { left: pct("C4b2", [1], [0, 1], m0), right: pct("C4b9", [1], [0, 1], m0) };
+   const nat = rows.find(r => r.label === "National"), lab_ = rows.find(r => r.label === "Labour"), act = rows.find(r => r.label === "ACT");
+   return { title: `Jacinda Ardern’s resignation: the same news, opposite feelings.`,
+     dek: `Asked how they felt about Ardern stepping down in January 2023, <b>${R(lab_.right.p)}%</b> of Labour voters said sad — and <b>${R(nat.left.p)}%</b> of National and <b>${R(act.left.p)}%</b> of ACT voters said happy. Across everyone the country was split almost evenly: ${R(all.right.p)}% sad, ${R(all.left.p)}% happy.`,
+     body: `<h3>% feeling happy vs sad about Ardern’s resignation, by party vote</h3><div class="chart">${diverging(rows, { width: W, labW: 120, leftLabel: "Happy", rightLabel: "Sad", leftColor: css("--cat-4"), rightColor: css("--cat-7"), split: .5 })}</div>`,
+     note: `C4b, a tick-all-that-apply question; people could choose both or neither, and other feelings (uneasy, proud, angry…) were less common.`,
+     links: [STORY_LINK("All feelings about the resignation", "C4b1", "mvpartyvote", "battery"), STORY_LINK("Feelings about the economy", "C4a1", "", "battery")] };
+ }},
+ { id: "climate", kicker: "Climate", build(W) {
+   const m0 = ALL(), order = [2, 3, 1, 9];
+   const cm = new Map([[2, css("--cat-3")], [3, css("--cat-4")], [1, css("--cat-8")], [9, css("--p-dk")]]);
+   const short = { 1: "Not happening", 2: "Happening, mostly human-caused", 3: "Happening, mostly natural", 9: "Don’t know" };
+   const groups = [["All respondents", m0], ...[...PV, [7, "Another party"]].map(([c, nm]) => [nm, andMask(m0, "mvpartyvote", c)])].map(([label, m]) => {
+     const d = dist("C8", m); return { label, n: d.n, bold: label === "All respondents", segs: order.map(o => { const c = d.cats.find(z => z.code === o); return { ...c, label: short[o] }; }) }; });
+   const pick = (nm, code) => groups.find(g => g.label === nm).segs.find(s => s.code === code).p;
+   return { title: `On climate change, the right is split — and ACT voters mostly think it’s natural.`,
+     dek: `<b>${R(pick("Green", 2))}%</b> of Green voters and ${R(pick("Labour", 2))}% of Labour voters say climate change is happening and mostly caused by humans. On the right the picture is very different: <b>${R(pick("ACT", 3))}%</b> of ACT voters and ${R(pick("NZ First", 3))}% of NZ First voters think it is mostly natural, and National voters split ${R(pick("National", 2))}–${R(pick("National", 3))}. Outright denial is rare everywhere (${R(pick("All respondents", 1))}% overall).`,
+     body: `<h3>Is climate change happening, and if so, why?</h3>${legendHTML(order.map(o => ({ code: o, label: short[o] })), cm)}<div class="chart">${stacked(groups, cm, { width: W, labW: 130 })}</div>`,
+     note: `C8, “Don’t know” in the base.`,
+     links: [STORY_LINK("Climate cause, by party", "C8", "mvpartyvote"), STORY_LINK("Stronger carbon policy, by party", "C12g", "mvpartyvote")] };
+ }},
+ { id: "maoriroll", kicker: "MMP", build(W) {
+   const m0 = ALL(), mr = andMask(m0, "maoriel_23w", 1);
+   const rows = [[1, "Labour"], [6, "Te Pāti Māori"], [3, "Green"], [2, "National"], [5, "NZ First"], [7, "Another party"]].map(([c, nm]) => ({ label: nm, color: partyColor(nm), a: pct("mvpartyvote", [c], VOTERS, mr), b: pct("mvelecvote", [c], VOTERS, mr) }));
+   const lab_ = rows[0], tpm = rows[1];
+   const labToTpm = pct("mvelecvote", [6], VOTERS, andMask(mr, "mvpartyvote", 1));
+   return { title: `On the Māori roll, Labour won the party vote but Te Pāti Māori won the seats.`,
+     dek: `Among voters on the Māori electoral roll, Labour took <b>${R(lab_.a.p)}%</b> of the party vote to Te Pāti Māori’s <b>${R(tpm.a.p)}%</b>. The electorate vote flipped that: <b>${R(tpm.b.p)}%</b> backed Te Pāti Māori candidates and ${R(lab_.b.p)}% Labour’s. About <b>${R(labToTpm.p)}%</b> of Labour party-voters on the roll gave their electorate vote to Te Pāti Māori — the ticket-splitting that helped it win six of the seven Māori seats and create an overhang.`,
+     body: `${legendItems([[css("--ink-2"), "Party vote"], [css("--ink-2"), "Electorate vote", "outline"]])}<div class="chart">${pairBars(rows, { width: W, a: "Party vote", b: "Electorate vote", max: .6 })}</div>`,
+     note: `Validated votes of respondents on the Māori roll (n ≈ ${tpm.a.n}, effective n ≈ ${Math.round(tpm.a.neff)}). The Labour-to-TPM split rests on about ${labToTpm.n} people, so treat it as indicative.`,
+     links: [STORY_LINK("Party vote on Māori vs general roll", "mvpartyvote", "maoriel_23w"), STORY_LINK("Keep or abolish the Māori seats", "G3", "mvpartyvote")] };
+ }},
+];
+
+function renderStories() {
+  const el = $("#v-stories");
+  const W = Math.min(Math.max(280, (el.clientWidth || 1200) - 56), 886);
+  const built = inStoryCtx(() => STORIES.map(s => { try { return { ...s, ...s.build(W) }; } catch (e) { console.error(s.id, e); return { ...s, title: "Could not build this story", dek: esc(String(e)), body: "", note: "", links: [] }; } }));
+  el.innerHTML = `<div class="stories">
+    <div class="card intro"><h2>Stories from the 2023 New Zealand Election Study</h2>
+      <p class="sub">Ten findings worth knowing, each computed live from the data in this file. Stories always use the vote-validated weight, the whole sample and keep “Don’t know” in the base, so they don’t change with the settings above. Hover any chart for exact figures and sample sizes; follow the links to dig further in the Explorer.</p>
+      <div class="toc">${built.map((s, i) => `<a href="#" data-jump="${s.id}"><span>${i + 1}</span>${esc(s.kicker)}</a>`).join("")}</div></div>
+    ${built.map((s, i) => `<article class="card story" id="story-${s.id}"><div class="kicker">${i + 1} · ${esc(s.kicker)}</div><h2>${s.title}</h2><p class="dek">${s.dek}</p>${s.body}<p class="note">${s.note}</p><div class="slinks">${s.links.join("")}</div></article>`).join("")}
+  </div>`;
+  el.querySelectorAll("[data-jump]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); document.getElementById("story-" + a.dataset.jump).scrollIntoView({ behavior: "smooth", block: "start" }); }));
+  el.querySelectorAll(".slink").forEach(a => a.addEventListener("click", e => { e.preventDefault(); S.xVar = a.dataset.var; S.xBy = a.dataset.by; S.xView = a.dataset.view; go("explore"); scrollTo(0, 0); }));
+}
+
 /* ============================================================ METHODS */
 function renderMethods() {
   $("#v-methods").innerHTML = `<div class="card methods"><h2>Methods & caveats</h2>
@@ -850,7 +1123,7 @@ function renderMethods() {
   <li><b>mwgt</b> scales the Māori-descent subsample to its actual size and gives everyone else zero weight; use it for analysis of Māori respondents on their own.</li></ul>
   <h3>Uncertainty</h3><p>Weighting reduces the information in the sample. Every estimate uses Kish’s effective sample size, n<sub>eff</sub> = (Σw)²/Σw², computed for that estimate’s base. Proportions get Wilson 95% intervals using n<sub>eff</sub>; means use a linearised standard error. Tests of association are Pearson χ² scaled by n<sub>eff</sub> (a first-order design correction), with Cramér’s V as effect size. The release has no strata or cluster identifiers, so these are approximate but far better than treating the data as a simple random sample.</p>
   <h3>Small groups</h3><p>Groups with fewer than ${MIN_N} respondents are marked with * and drawn faded; under ${SUP_N} they are suppressed. Pasifika respondents (n ≈ 31) and individual electorates are too small for reliable estimates and electorates are not included here.</p>
-  <h3>Missing and non-substantive answers</h3><p>Codes labelled “Don’t know”, “Missing”, “Unclassified”, “Unknown” and similar, plus any code without a label in the release (e.g. 0 on A5), are treated as non-substantive and excluded unless you tick <i>Show “Don’t know”</i>. On 0–10 scales, 0 is a real answer and 99 is “Don’t know”. For tick-box questions, “not selected” is a valid answer.</p>
+  <h3>Missing and non-substantive answers</h3><p>Codes labelled “Don’t know”, “Missing”, “Unclassified”, “Unknown” and similar, plus any code without a label in the release (e.g. 0 on A5), are treated as non-substantive. By default, answers labelled “Don’t know” are kept in the base and shown as their own bar — the convention most published NZES analyses use, so shares match theirs once “Don’t know” is merged with the middle option. Untick <i>Show “Don’t know”</i> to drop them. Blank, “Missing”, unlabelled, “Unknown”, “Unclassified” and “Don’t wish to answer” codes are always left out. On 0–10 scales, 0 is a real answer and 99 is “Don’t know”. For tick-box questions, “not selected” is a valid answer.</p>
   <h3>Recalled vote</h3><p>2020 party vote is self-reported in 2023 (E16 / mppartyvote). Recall is known to drift towards the previous winner and towards current preferences, so vote-switching estimates are indicative.</p>
   <h3>Text answers and privacy</h3><p>Free-text answers, occupation text, city, electorate and identifiers were deliberately left out of this file. The underlying data are licensed through the data archive; do not redistribute this HTML file (it contains respondent-level data) beyond the terms of that licence.</p>
   <h3>Rebuilding</h3><p>This page is generated by <code>build.py</code> from the release <code>.dta</code> file and the questionnaire PDF.</p></div>`;
